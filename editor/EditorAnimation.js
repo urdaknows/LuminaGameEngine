@@ -987,7 +987,30 @@ export class EditorAnimation {
                 const cols = Math.floor(img.width / frameW);
                 const c = fIndex % cols;
                 const r = Math.floor(fIndex / cols);
-                this.ctxPreview.drawImage(img, c * frameW, r * frameH, frameW, frameH, 0, 0, this.canvasPreview.width, this.canvasPreview.height);
+
+                // FIX: Mantém proporção real do sprite, não estica
+                const canvasW = this.canvasPreview.width;
+                const canvasH = this.canvasPreview.height;
+                const frameAspect = frameW / frameH;
+                const canvasAspect = canvasW / canvasH;
+
+                let drawW, drawH, drawX, drawY;
+
+                if (frameAspect > canvasAspect) {
+                    // Frame é mais largo que canvas - usa largura total
+                    drawW = canvasW;
+                    drawH = canvasW / frameAspect;
+                    drawX = 0;
+                    drawY = (canvasH - drawH) / 2; // Centraliza verticalmente
+                } else {
+                    // Frame é mais alto que canvas - usa altura total
+                    drawH = canvasH;
+                    drawW = canvasH * frameAspect;
+                    drawY = 0;
+                    drawX = (canvasW - drawW) / 2; // Centraliza horizontalmente
+                }
+
+                this.ctxPreview.drawImage(img, c * frameW, r * frameH, frameW, frameH, drawX, drawY, drawW, drawH);
             }
 
             this.previewFrameIndex = (this.previewFrameIndex + 1) % this.animacaoSelecionada.frames.length;
