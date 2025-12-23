@@ -1849,7 +1849,7 @@ class EditorPrincipal {
             }
 
             spriteHtml += `
-               <div style="display: flex; gap: 5px;">
+               <div style="display: flex; gap: 5px; margin-bottom: 5px;">
                     <div style="flex:1;">
                         <label style="font-size:10px; color:#aaa;">Offset X</label>
                         <input type="number" id="prop-offset-x" value="${spriteComp.offsetX}" style="width:100%; background:#111; color:white; border:1px solid #444;">
@@ -1857,6 +1857,16 @@ class EditorPrincipal {
                     <div style="flex:1;">
                         <label style="font-size:10px; color:#aaa;">Offset Y</label>
                         <input type="number" id="prop-offset-y" value="${spriteComp.offsetY}" style="width:100%; background:#111; color:white; border:1px solid #444;">
+                    </div>
+                </div>
+                <div style="display: flex; gap: 5px;">
+                    <div style="flex:1;">
+                        <label style="font-size:10px; color:#aaa;">Scale X</label>
+                        <input type="number" id="prop-scale-x" value="${spriteComp.scaleX || 1.0}" step="0.1" style="width:100%; background:#111; color:white; border:1px solid #444;">
+                    </div>
+                    <div style="flex:1;">
+                        <label style="font-size:10px; color:#aaa;">Scale Y</label>
+                        <input type="number" id="prop-scale-y" value="${spriteComp.scaleY || 1.0}" step="0.1" style="width:100%; background:#111; color:white; border:1px solid #444;">
                     </div>
                 </div>`;
 
@@ -2677,6 +2687,15 @@ class EditorPrincipal {
             });
         }
         bindOffset('x'); bindOffset('y');
+
+        // Listeners de Scale (Sprite)
+        const bindScale = (axis) => {
+            document.getElementById(`prop-scale-${axis}`)?.addEventListener('input', (e) => {
+                const sprite = ent.obterComponente('SpriteComponent');
+                if (sprite) sprite[`scale${axis.toUpperCase()}`] = parseFloat(e.target.value) || 1.0;
+            });
+        }
+        bindScale('x'); bindScale('y');
 
         // Script Props Edit
         document.querySelectorAll('.script-prop-input').forEach(input => {
