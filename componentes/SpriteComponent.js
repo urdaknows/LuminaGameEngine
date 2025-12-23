@@ -29,6 +29,10 @@ export class SpriteComponent {
         this.inverterX = false;
         this.inverterY = false;
 
+        // Escala (Scale)
+        this.scaleX = 1.0; // Escala horizontal (1.0 = tamanho original)
+        this.scaleY = 1.0; // Escala vertical (1.0 = tamanho original)
+
         // Offset de Renderização (Ajuste fino de posição)
         this.offsetX = 0;
         this.offsetY = 0;
@@ -519,9 +523,14 @@ export class SpriteComponent {
         // 2. Rotacionar
         ctx.rotate(rotacao);
 
-        // 3. Espelhar (Flip)
-        const scaleX = this.inverterX ? -1 : 1;
-        const scaleY = this.inverterY ? -1 : 1;
+        // 3. Aplicar Escala e Espelhamento
+        let scaleX = this.scaleX || 1.0; // Escala customizada
+        let scaleY = this.scaleY || 1.0;
+
+        // Se invertido, inverte a escala (multiplica por -1)
+        if (this.inverterX) scaleX *= -1;
+        if (this.inverterY) scaleY *= -1;
+
         ctx.scale(scaleX, scaleY);
 
         if (!imgToDraw || !imgToDraw.complete || imgToDraw.naturalWidth === 0) {
@@ -592,6 +601,8 @@ export class SpriteComponent {
             indiceFrame: this.indiceFrame,
             inverterX: this.inverterX,
             inverterY: this.inverterY,
+            scaleX: this.scaleX,
+            scaleY: this.scaleY,
             offsetX: this.offsetX,
             offsetY: this.offsetY,
             autoplayAnim: this.autoplayAnim
@@ -609,6 +620,8 @@ export class SpriteComponent {
         this.indiceFrame = cfg.indiceFrame || 0;
         this.inverterX = !!cfg.inverterX;
         this.inverterY = !!cfg.inverterY;
+        this.scaleX = cfg.scaleX !== undefined ? cfg.scaleX : 1.0;
+        this.scaleY = cfg.scaleY !== undefined ? cfg.scaleY : 1.0;
         this.offsetX = cfg.offsetX || 0;
         this.offsetY = cfg.offsetY || 0;
         this.autoplayAnim = cfg.autoplayAnim || '';
