@@ -115,7 +115,7 @@ Open `index.html` in a modern browser (recommended: Chrome, Firefox, Edge)
 ## 📚 Documentation
 
 ### Complete Documentation
-- **[📖 Complete Documentation](documentation/GAME_ENGINE_COMPLETA.md)** - Full engine guide (Portuguese)
+- **[📖 Complete Documentation](documentation/GAME_ENGINE_COMPLETE.md)** - Full engine guide (Portuguese)
 
 ### Specific Guides
 - **[🎯 User Manual](documentation/MANUAL_DE_USO.md)** - How to use the editor (Portuguese)

@@ -115,14 +115,14 @@ Abra `index.html` em um navegador moderno (recomendado: Chrome, Firefox, Edge)
 ## 📚 Documentação
 
 ### Documentação Completa
-- **[📖 Documentação Completa](documentation/GAME_ENGINE_COMPLETA.md)** - Guia completo da engine
+- **[📖 Documentação Completa](documentation/GAME_ENGINE_COMPLETA.pt-BR.md)** - Guia completo da engine
 
 ### Guias Específicos
-- **[🎯 Manual de Uso](documentation/MANUAL_DE_USO.md)** - Como usar o editor
-- **[✨ Sistema de Partículas](documentation/PARTICLE_SYSTEM.md)** - Guia de partículas
-- **[💡 Sistema de Iluminação](documentation/tecnica/LIGHTING_SYSTEM.md)** - Iluminação 2D
-- **[📜 Scripting](documentation/04_scripting.md)** - Criando scripts
-- **[🎬 Animações](documentation/03_animacoes.md)** - Sistema de animações
+- **[🎯 Manual de Uso](documentation/MANUAL_DE_USO.pt-BR.md)** - Como usar o editor
+- **[✨ Sistema de Partículas](documentation/PARTICLE_SYSTEM.pt-BR.md)** - Guia de partículas
+- **[💡 Sistema de Iluminação](documentation/tecnica/LIGHTING_SYSTEM.pt-BR.md)** - Iluminação 2D
+- **[📜 Scripting](documentation/04_scripting.pt-BR.md)** - Criando scripts
+- **[🎬 Animações](documentation/03_animacoes.pt-BR.md)** - Sistema de animações
 
 ---
 
