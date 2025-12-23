@@ -23,6 +23,33 @@
 
 ---
 
+> ⚠️ **Project Disclaimer**  
+> Lumina Engine is an open-source project with an educational, experimental, and architectural focus.
+> It is not intended to compete directly with commercial game engines, but rather to demonstrate
+> advanced concepts in game development, ECS architecture, and editor tooling using pure JavaScript.
+
+---
+
+## 🎯 Target Audience
+
+- Developers who want to learn about game engines
+- Programmers interested in ECS (Entity-Component-System)
+- Computer science students
+- Game dev enthusiasts without frameworks
+- Creators of simple 2D games
+
+---
+
+## ❓ Why Pure JavaScript?
+
+- **Full control** over the engine architecture
+- **Zero external dependencies** - easier to understand and maintain
+- **Easy to study and debug** - no framework magic
+- **Runs directly in the browser** - no build step required
+- **Focus on fundamentals** - learn core concepts, not frameworks
+
+---
+
 ## ✨ Highlights
 
 - 🖼️ **WYSIWYG Visual Editor** - Create games without coding
