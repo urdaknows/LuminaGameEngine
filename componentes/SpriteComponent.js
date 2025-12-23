@@ -44,12 +44,27 @@ export class SpriteComponent {
         this.source = source;
         this.imagem.onload = () => {
             this.carregada = true;
+
+            // AUTO-DETECT: Se larguraFrame/alturaFrame ainda são valores padrão (32),
+            // atualiza automaticamente para as dimensões reais da imagem
+            if (this.larguraFrame === 32 && this.alturaFrame === 32) {
+                this.larguraFrame = this.imagem.naturalWidth;
+                this.alturaFrame = this.imagem.naturalHeight;
+                console.log(`[SpriteComponent] Auto-detectado dimensões: ${this.larguraFrame}x${this.alturaFrame}`);
+            }
         };
         this.imagem.src = source;
 
         // Verifica se já carregou (cache)
         if (this.imagem.complete && this.imagem.naturalWidth > 0) {
             this.carregada = true;
+
+            // AUTO-DETECT para imagem já em cache
+            if (this.larguraFrame === 32 && this.alturaFrame === 32) {
+                this.larguraFrame = this.imagem.naturalWidth;
+                this.alturaFrame = this.imagem.naturalHeight;
+                console.log(`[SpriteComponent] Auto-detectado dimensões (cache): ${this.larguraFrame}x${this.alturaFrame}`);
+            }
         }
     }
 
@@ -210,8 +225,36 @@ export class SpriteComponent {
                     // console.log('[SpriteComponent] Sincronizando asset:', this.assetId);
 
                     if (this.source !== asset.source) this.setSource(asset.source);
-                    this.larguraFrame = asset.larguraFrame;
-                    this.alturaFrame = asset.alturaFrame;
+
+                    // AUTO-DETECT: Detecta dimensões do asset automaticamente
+                    // Se asset tem dimensões específicas, usa elas. Se não, usa detecção automática
+                    if (asset.larguraFrame && asset.alturaFrame) {
+                        this.larguraFrame = asset.larguraFrame;
+                        this.alturaFrame = asset.alturaFrame;
+                    } else if (asset.source) {
+                        // Se não tem dimensões no asset, tenta detectar da imagem
+                        const tempImg = new Image();
+                        tempImg.onload = () => {
+                            if (this.larguraFrame === 32 && this.alturaFrame === 32) {
+                                this.larguraFrame = tempImg.naturalWidth;
+                                this.alturaFrame = tempImg.naturalHeight;
+                                console.log(`[SpriteComponent] Auto-detectado do asset: ${this.larguraFrame}x${this.alturaFrame}`);
+                            }
+                        };
+                        tempImg.src = asset.source;
+
+                        // Se já está em cache
+                        if (tempImg.complete && tempImg.naturalWidth > 0) {
+                            if (this.larguraFrame === 32 && this.alturaFrame === 32) {
+                                this.larguraFrame = tempImg.naturalWidth;
+                                this.alturaFrame = tempImg.naturalHeight;
+                            }
+                        }
+                    } else {
+                        // Fallback: usa valores padrão do asset se disponível
+                        this.larguraFrame = asset.larguraFrame || 32;
+                        this.alturaFrame = asset.alturaFrame || 32;
+                    }
 
                     // FIX: Asset deve sobrescrever animações locais, não o contrário
                     // Ordem correta: primeiro local (this), depois asset (sobrescreve)
