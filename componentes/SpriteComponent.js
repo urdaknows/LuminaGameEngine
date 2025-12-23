@@ -47,10 +47,27 @@ export class SpriteComponent {
 
             // AUTO-DETECT: Se larguraFrame/alturaFrame ainda são valores padrão (32),
             // atualiza automaticamente para as dimensões reais da imagem
+            // EXCETO se detectar que é um sprite sheet (múltiplos de um tamanho comum)
             if (this.larguraFrame === 32 && this.alturaFrame === 32) {
-                this.larguraFrame = this.imagem.naturalWidth;
-                this.alturaFrame = this.imagem.naturalHeight;
-                console.log(`[SpriteComponent] Auto-detectado dimensões: ${this.larguraFrame}x${this.alturaFrame}`);
+                const w = this.imagem.naturalWidth;
+                const h = this.imagem.naturalHeight;
+
+                // Heurística: Se a imagem é muito grande E é múltiplo de tamanhos comuns,
+                // provavelmente é um sprite sheet - mantém 32x32
+                const isLikelySpriteSheet = (
+                    (w > 128 || h > 128) && // Imagem grande
+                    (w % 32 === 0 && h % 32 === 0) // Múltiplo de 32
+                );
+
+                if (!isLikelySpriteSheet) {
+                    // É provavelmente um sprite único - usa dimensões completas
+                    this.larguraFrame = w;
+                    this.alturaFrame = h;
+                    console.log(`[SpriteComponent] Auto-detectado sprite único: ${this.larguraFrame}x${this.alturaFrame}`);
+                } else {
+                    // Provavelmente é sprite sheet - mantém 32x32 e avisa
+                    console.log(`[SpriteComponent] Sprite sheet detectado (${w}x${h}). Use larguraFrame/alturaFrame manual se não for 32x32.`);
+                }
             }
         };
         this.imagem.src = source;
@@ -59,11 +76,23 @@ export class SpriteComponent {
         if (this.imagem.complete && this.imagem.naturalWidth > 0) {
             this.carregada = true;
 
-            // AUTO-DETECT para imagem já em cache
+            // AUTO-DETECT para imagem já em cache (mesma lógica)
             if (this.larguraFrame === 32 && this.alturaFrame === 32) {
-                this.larguraFrame = this.imagem.naturalWidth;
-                this.alturaFrame = this.imagem.naturalHeight;
-                console.log(`[SpriteComponent] Auto-detectado dimensões (cache): ${this.larguraFrame}x${this.alturaFrame}`);
+                const w = this.imagem.naturalWidth;
+                const h = this.imagem.naturalHeight;
+
+                const isLikelySpriteSheet = (
+                    (w > 128 || h > 128) &&
+                    (w % 32 === 0 && h % 32 === 0)
+                );
+
+                if (!isLikelySpriteSheet) {
+                    this.larguraFrame = w;
+                    this.alturaFrame = h;
+                    console.log(`[SpriteComponent] Auto-detectado sprite único (cache): ${this.larguraFrame}x${this.alturaFrame}`);
+                } else {
+                    console.log(`[SpriteComponent] Sprite sheet detectado (cache, ${w}x${h}). Use larguraFrame/alturaFrame manual.`);
+                }
             }
         }
     }
