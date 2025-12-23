@@ -1,0 +1,65 @@
+{
+    "name": "lumina-engine",
+    "version": "2.0.0",
+    "description": "Complete 2D Game Engine with Visual Editor in Pure JavaScript - Illuminate Your Game Development",
+    "main": "main.js",
+    "type": "module",
+    "scripts": {
+        "start": "npx http-server -p 8000",
+        "dev": "npx http-server -p 8000 -o",
+        "test": "echo \"No tests specified\" && exit 0"
+    },
+    "keywords": [
+        "game-engine",
+        "2d-game-engine",
+        "javascript",
+        "html5-canvas",
+        "game-development",
+        "visual-editor",
+        "wysiwyg",
+        "entity-component-system",
+        "ecs",
+        "particle-system",
+        "lighting-system",
+        "tilemap-editor",
+        "animation-editor",
+        "game-editor",
+        "browser-game",
+        "vanilla-javascript"
+    ],
+    "author": {
+        "name": "Alex Sandro Martins de Araujo",
+        "email": "seu-email@exemplo.com"
+    },
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/uareke/LuminaGameEngine.git"
+    },
+    "bugs": {
+        "url": "https://github.com/uareke/LuminaGameEngine/issues"
+    },
+    "homepage": "https://github.com/uareke/LuminaGameEngine#readme",
+    "engines": {
+        "node": ">=14.0.0"
+    },
+    "files": [
+        "main.js",
+        "index.html",
+        "engine/",
+        "componentes/",
+        "editor/",
+        "entidades/",
+        "estados/",
+        "movimentacao/",
+        "player/",
+        "sistemas/",
+        "css/",
+        "assets/",
+        "README.md",
+        "README.pt-BR.md",
+        "LICENSE"
+    ],
+    "devDependencies": {},
+    "dependencies": {}
+}

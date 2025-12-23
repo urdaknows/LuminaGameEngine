@@ -1,0 +1,72 @@
+# Lumina Engine - .npmignore
+# Files and folders that should NOT be published to NPM
+
+# Development files
+.git/
+.github/
+.vscode/
+.idea/
+.gemini/
+.agent/
+.history/
+
+# Documentation (too large, link to GitHub instead)
+documentation/
+docs/
+
+# Backup files
+backup/
+*.backup
+*.old
+*.bak
+
+# OS specific
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test files
+test/
+tests/
+*.test.js
+*.spec.js
+
+# User projects (examples only on GitHub)
+projects/
+user_projects/
+*.lumina
+
+# Large assets (examples only)
+# Uncomment if you have large files
+# *.psd
+# *.ai
+
+# Temp files
+tmp/
+temp/
+*.tmp
+*.cache
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Build artifacts (if you add build process later)
+dist/
+build/
+*.min.js
+*.min.css
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Misc
+.eslintcache
