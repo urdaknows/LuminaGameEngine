@@ -208,9 +208,9 @@ class MovimentacaoBasicaScript {
         // --- Lógica de Animação ---
         const sprite = this.entidade.obterComponente('SpriteComponent');
         if (sprite) {
-            // Espelhamento (Flip)
+            // Espelhamento - Só muda se estiver se movendo
             if (this.entidade.velocidadeX > 0) sprite.inverterX = false;
-            if (this.entidade.velocidadeX < 0) sprite.inverterX = true;
+            else if (this.entidade.velocidadeX < 0) sprite.inverterX = true;
 
             // Transição de Estados de Animação
             if (this.estado === 'parado') sprite.play(animIdle);
@@ -330,9 +330,9 @@ class MovimentacaoCorridaScript {
         // --- Lógica de Animação ---
         const sprite = this.entidade.obterComponente('SpriteComponent');
         if (sprite) {
-            // Espelhamento
+            // Espelhamento - Só muda se estiver se movendo
             if (this.entidade.velocidadeX > 0) sprite.inverterX = false;
-            if (this.entidade.velocidadeX < 0) sprite.inverterX = true;
+            else if (this.entidade.velocidadeX < 0) sprite.inverterX = true;
 
             // Estados
             if (this.estado === 'parado') sprite.play(animIdle); 
@@ -504,9 +504,9 @@ class MovimentacaoDashScript {
         // --- Lógica de Animação ---
         const sprite = this.entidade.obterComponente('SpriteComponent');
         if (sprite) {
-            // Espelhamento
+            // Espelhamento - Só muda se estiver se movendo
             if (this.entidade.velocidadeX > 0) sprite.inverterX = false;
-            if (this.entidade.velocidadeX < 0) sprite.inverterX = true;
+            else if (this.entidade.velocidadeX < 0) sprite.inverterX = true;
 
             // Estados
             // Mantendo hardcoded para dash por enquanto para simplicidade, ou voltar attrs
@@ -823,9 +823,11 @@ class MovimentacaoPlataformaScript {
             // Se outro script está ocupado, não muda animação
             if (scriptOcupado) return;
             
-            // Espelhamento
+            // Espelhamento - SOMENTE quando há movimento horizontal
+            // Evita bug de flip ao agachar parado
             if (this.entidade.velocidadeX > 0) sprite.inverterX = false;
-            if (this.entidade.velocidadeX < 0) sprite.inverterX = true;
+            else if (this.entidade.velocidadeX < 0) sprite.inverterX = true;
+            // Se velocidadeX === 0, MANTÉM o flip anterior (não muda)
 
             // Transições de Animação
             // Usamos coyoteTimer > 0 para considerar "chão" para fins de animação (evita flicker)
