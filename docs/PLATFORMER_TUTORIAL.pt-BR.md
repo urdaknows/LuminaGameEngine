@@ -38,11 +38,9 @@ Neste tutorial, você aprenderá como:
 - **Adicionar mecânicas especiais** (dash, agachar, pulo duplo)
 
 ### 🎯 Recursos Avançados
-- **Sistema de câmera seguindo o jogador**
 - **Personalização de controles**
 - **Gerenciamento de estados de animação**
-- **Ajuste fino de hitboxes**
-- **Parâmetros de movimento** (velocidade, força do pulo, gravidade)
+- **Parâmetros de movimento** 
 
 ---
 

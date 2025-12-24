@@ -38,11 +38,9 @@ In this tutorial, you will learn how to:
 - **Add special mechanics** (dash, crouch, double jump)
 
 ### 🎯 Advanced Features
-- **Camera follow system**
 - **Input customization**
 - **Animation state management**
-- **Hitbox fine-tuning**
-- **Movement parameters** (speed, jump force, gravity)
+- **Movement parameters** 
 
 ---
 
