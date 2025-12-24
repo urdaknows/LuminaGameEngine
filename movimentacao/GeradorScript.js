@@ -1456,15 +1456,23 @@ class CombateMeleeScript {
             sprite.play(this.animAttack);
         }
         
+        // Avança tempo do ataque
+        this.tempoDecorrido += deltaTime;
+        
+        // TIMEOUT DE SEGURANÇA: Se passou o cooldown, força fim do ataque
+        // Isso evita o bug de ficar preso atacando se a animação tem loop=true
+        if (this.tempoDecorrido >= this.cooldownAtaque) {
+            this.atacando = false;
+            console.log('⚔️ Ataque Completo! (Timeout)');
+            return;
+        }
+        
         // Verifica se a animação de ataque completou (para animações sem loop)
         if (sprite && sprite.animacaoCompleta && sprite.animacaoCompleta()) {
             this.atacando = false;
             console.log('⚔️ Ataque Completo!');
             return;
         }
-
-        // Avança tempo do ataque
-        this.tempoDecorrido += deltaTime;
 
         // Verifica janela ativa da hitbox
         const hitboxAtiva = (this.tempoDecorrido >= this.inicioHitbox) && 
