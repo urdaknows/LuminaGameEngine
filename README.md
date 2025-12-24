@@ -117,8 +117,13 @@ Open `index.html` in a modern browser (recommended: Chrome, Firefox, Edge)
 ### Complete Documentation
 - **[📖 Complete Documentation](docs/GAME_ENGINE_COMPLETE.md)** - Full engine guide (Portuguese)
 
+### Video Tutorials
+- **[🎮 Platformer Tutorial](docs/PLATFORMER_TUTORIAL.md)** - How to create a platformer player ([English](docs/PLATFORMER_TUTORIAL.md) | [Português](docs/PLATFORMER_TUTORIAL.pt-BR.md))
+  - 📺 **[Watch Video](https://youtu.be/cUXe44JrpEs)** - Step-by-step video guide
+
 ### Specific Guides
 - **[🎯 User Manual](docs/MANUAL_DE_USO.md)** - How to use the editor (Portuguese)
+- **[🏃 Player Movement Guide](docs/PLAYER_MOVEMENT_GUIDE.md)** - Detailed movement system ([English](docs/PLAYER_MOVEMENT_GUIDE.md) | [Português](docs/PLAYER_MOVEMENT_GUIDE.pt-BR.md))
 - **[✨ Particle System](docs/PARTICLE_SYSTEM.md)** - Particle guide (Portuguese)
 - **[💡 Lighting System](docs/tecnica/LIGHTING_SYSTEM.md)** - 2D Lighting (Portuguese)
 - **[📜 Scripting](docs/04_scripting.md)** - Creating scripts (Portuguese)
