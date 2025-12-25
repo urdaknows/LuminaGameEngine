@@ -46,18 +46,25 @@
             <!-- Grupo: Controles de Execução -->
             <div class="toolbar-group">
 
-                <button class="btn-play" id="btn-play" title="Executar (Space)">▶ Play</button>
-                <button class="btn-pause hidden" id="btn-pause" title="Pausar">⏸ Pause</button>
-                <button class="btn-stop hidden" id="btn-stop" title="Parar">◼ Stop</button>
+                <button class="btn-play" id="btn-play" title="Executar (Space)"><span data-i18n="toolbar.play">▶
+                        Play</span></button>
+                <button class="btn-pause hidden" id="btn-pause" title="Pausar"><span data-i18n="toolbar.pause">⏸
+                        Pause</span></button>
+                <button class="btn-stop hidden" id="btn-stop" title="Parar"><span data-i18n="toolbar.stop">◼
+                        Stop</span></button>
             </div>
 
             <!-- Grupo: Ações de Projeto -->
             <div class="toolbar-group">
-                <button class="btn-new" id="btn-new" title="Novo Projeto">📄 Novo</button>
-                <button class="btn-save" id="btn-save" title="Salvar (Ctrl+S)">💾 Salvar</button>
-                <button class="btn-load" id="btn-load" title="Carregar">📂 Carregar</button>
+                <button class="btn-new" id="btn-new" title="Novo Projeto"><span data-i18n="menu.new">📄
+                        Novo</span></button>
+                <button class="btn-save" id="btn-save" title="Salvar (Ctrl+S)"><span data-i18n="menu.save">💾
+                        Salvar</span></button>
+                <button class="btn-load" id="btn-load" title="Carregar"><span data-i18n="menu.open">📂
+                        Carregar</span></button>
                 <input type="file" id="input-load-project" style="display:none" accept=".json">
-                <button class="btn-export" id="btn-export" title="Exportar">📤 Exportar</button>
+                <button class="btn-export" id="btn-export" title="Exportar"><span data-i18n="menu.export">📤
+                        Exportar</span></button>
                 <button class="btn-scene-settings" id="btn-scene-settings"
                     title="Configurações da Cena (Cor de Fundo)">🎨 Cena</button>
                 <button class="btn-settings" id="btn-settings" title="Configurações">⚙️</button>
@@ -585,8 +592,13 @@
             new LanguageSelector('#language-selector-container');
 
             // Atualizar DOM com traduções iniciais
-            // (Por enquanto não vamos adicionar data-i18n para não quebrar nada)
-            // Mas o sistema está pronto para uso
+            i18n.updateDOM();
+
+            // Escutar mudanças de idioma para atualizar a interface
+            i18n.onLanguageChange(() => {
+                i18n.updateDOM();
+                console.log('[i18n] Interface atualizada para:', i18n.getCurrentLanguage());
+            });
 
             console.log('[i18n] Sistema de tradução inicializado - Idioma:', i18n.getCurrentLanguage());
         }
