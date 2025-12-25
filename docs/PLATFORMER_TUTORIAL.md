@@ -34,8 +34,6 @@ In this tutorial, you will learn how to:
 - **Add platformer movement** (walk, run, jump)
 - **Configure sprite animations** (idle, walk, run, jump, fall)
 - **Set up collision detection**
-- **Implement gravity physics**
-- **Add special mechanics** (dash, crouch, double jump)
 
 ### 🎯 Advanced Features
 - **Input customization**

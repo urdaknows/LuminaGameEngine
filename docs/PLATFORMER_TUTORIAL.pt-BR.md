@@ -34,8 +34,7 @@ Neste tutorial, você aprenderá como:
 - **Adicionar movimentação de plataforma** (andar, correr, pular)
 - **Configurar animações de sprite** (idle, walk, run, jump, fall)
 - **Configurar detecção de colisão**
-- **Implementar física de gravidade**
-- **Adicionar mecânicas especiais** (dash, agachar, pulo duplo)
+
 
 ### 🎯 Recursos Avançados
 - **Personalização de controles**

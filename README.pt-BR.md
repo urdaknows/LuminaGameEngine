@@ -120,6 +120,8 @@ Abra `index.html` em um navegador moderno (recomendado: Chrome, Firefox, Edge)
 ### Tutoriais em Vídeo
 - **[🎮 Tutorial de Plataforma](docs/PLATFORMER_TUTORIAL.pt-BR.md)** - Como criar um personagem de plataforma ([Português](docs/PLATFORMER_TUTORIAL.pt-BR.md) | [English](docs/PLATFORMER_TUTORIAL.md))
   - 📺 **[Assistir Vídeo](https://youtu.be/cUXe44JrpEs)** - Guia em vídeo passo a passo
+- **[📷 Tutorial de Camera Follow](docs/CAMERA_FOLLOW_TUTORIAL.pt-BR.md)** - Fazer a câmera seguir o jogador ([Português](docs/CAMERA_FOLLOW_TUTORIAL.pt-BR.md) | [English](docs/CAMERA_FOLLOW_TUTORIAL.md))
+  - 📺 **[Assistir Vídeo](https://youtu.be/5M8ysytr_6g)** - Guia rápido de configuração
 
 ### Guias Específicos
 - **[🎯 Manual de Uso](docs/MANUAL_DE_USO.pt-BR.md)** - Como usar o editor

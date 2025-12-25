@@ -120,6 +120,10 @@ Open `index.html` in a modern browser (recommended: Chrome, Firefox, Edge)
 ### Video Tutorials
 - **[🎮 Platformer Tutorial](docs/PLATFORMER_TUTORIAL.md)** - How to create a platformer player ([English](docs/PLATFORMER_TUTORIAL.md) | [Português](docs/PLATFORMER_TUTORIAL.pt-BR.md))
   - 📺 **[Watch Video](https://youtu.be/cUXe44JrpEs)** - Step-by-step video guide
+- **[📷 Camera Follow Tutorial](docs/CAMERA_FOLLOW_TUTORIAL.md)** - Make camera follow the player ([English](docs/CAMERA_FOLLOW_TUTORIAL.md) | [Português](docs/CAMERA_FOLLOW_TUTORIAL.pt-BR.md))
+  - 📺 **[Watch Video](https://youtu.be/5M8ysytr_6g)** - Quick setup guide
+
+  
 
 ### Specific Guides
 - **[🎯 User Manual](docs/MANUAL_DE_USO.md)** - How to use the editor (Portuguese)
