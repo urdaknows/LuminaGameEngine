@@ -124,6 +124,8 @@ Open `index.html` in a modern browser (recommended: Chrome, Firefox, Edge)
   - 📺 **[Watch Video](https://youtu.be/5M8ysytr_6g)** - Quick setup guide
 - **[🌍 Gravity Tutorial](docs/GRAVITY_TUTORIAL.md)** - Add gravity to your player ([English](docs/GRAVITY_TUTORIAL.md) | [Português](docs/GRAVITY_TUTORIAL.pt-BR.md))
   - 📺 **[Watch Video](https://youtu.be/Tpd6zxvGj38)** - Basic gravity setup
+- **[💀 Death & Respawn Tutorial](docs/DEATH_RESPAWN_TUTORIAL.md)** - Kill zones and checkpoints system ([English](docs/DEATH_RESPAWN_TUTORIAL.md) | [Português](docs/DEATH_RESPAWN_TUTORIAL.pt-BR.md))
+  - 📺 **[Watch Video](https://www.youtube.com/watch?v=liPqRAmKCWk)** - Complete death system
 
   
 

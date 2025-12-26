@@ -124,6 +124,8 @@ Abra `index.html` em um navegador moderno (recomendado: Chrome, Firefox, Edge)
   - 📺 **[Assistir Vídeo](https://youtu.be/5M8ysytr_6g)** - Guia rápido de configuração
 - **[🌍 Tutorial de Gravidade](docs/GRAVITY_TUTORIAL.pt-BR.md)** - Adicionar gravidade ao jogador ([Português](docs/GRAVITY_TUTORIAL.pt-BR.md) | [English](docs/GRAVITY_TUTORIAL.md))
   - 📺 **[Assistir Vídeo](https://youtu.be/Tpd6zxvGj38)** - Configuração básica de gravidade
+- **[💀 Tutorial de Morte & Respawn](docs/DEATH_RESPAWN_TUTORIAL.pt-BR.md)** - Sistema de zonas de morte e checkpoints ([Português](docs/DEATH_RESPAWN_TUTORIAL.pt-BR.md) | [English](docs/DEATH_RESPAWN_TUTORIAL.md))
+  - 📺 **[Assistir Vídeo](https://www.youtube.com/watch?v=liPqRAmKCWk)** - Sistema completo de morte
 
 ### Guias Específicos
 - **[🎯 Manual de Uso](docs/MANUAL_DE_USO.pt-BR.md)** - Como usar o editor
