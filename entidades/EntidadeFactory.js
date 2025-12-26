@@ -32,7 +32,7 @@ export class EntidadeFactory {
         // Configurações Específicas por Tipo
         switch (tipo) {
             case 'player':
-                entidade.nome = 'Novo Player';
+                entidade.nome = 'Player';
                 entidade.cor = '#ff0055'; // Vermelho/Rosa Vibrante
                 // Player geralmente tem Sprite e Física
                 entidade.adicionarComponente('SpriteComponent', new SpriteComponent());
@@ -50,7 +50,7 @@ export class EntidadeFactory {
                 break;
 
             case 'npc':
-                entidade.nome = 'Novo NPC';
+                entidade.nome = 'NPC';
                 entidade.cor = '#00ff88'; // Verde Neon
                 entidade.adicionarComponente('SpriteComponent', new SpriteComponent());
 
@@ -82,7 +82,7 @@ export class EntidadeFactory {
                 break;
 
             case 'objeto':
-                entidade.nome = 'Novo Objeto';
+                entidade.nome = 'Objeto';
                 entidade.cor = '#ffdd00'; // Amarelo
                 entidade.adicionarComponente('SpriteComponent', new SpriteComponent());
 
