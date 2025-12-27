@@ -1897,6 +1897,18 @@ class EditorPrincipal {
                        <input type="number" value="${colComp.altura}" class="plugin-prop" data-plugin="CollisionComponent" data-prop="altura" style="width:100%; background:#111; color:white; border:1px solid #444;">
                    </div>
                </div>
+               
+               <!-- Mirroring Section (Novo) -->
+               <div style="margin-bottom:5px; background:#1e1e2e; padding:4px; border-radius:4px; border:1px solid #444;">
+                   <div style="display:flex; align-items:center; margin-bottom:4px;">
+                        <input type="checkbox" ${colComp.mirrorX ? 'checked' : ''} class="plugin-prop-check" data-plugin="CollisionComponent" data-prop="mirrorX" id="chk-col-mirror">
+                        <label for="chk-col-mirror" style="font-size:10px; color:#ccc; margin-left:5px; cursor:pointer; font-weight:bold;">Enable Mirror Offset</label>
+                   </div>
+                   <div style="display:path; gap:5px; align-items:center;">
+                        <label style="font-size:10px; color:#aaa; min-width:60px;">Flipped X:</label>
+                        <input type="number" value="${colComp.offsetXMirrored !== undefined ? colComp.offsetXMirrored : 0}" class="plugin-prop" data-plugin="CollisionComponent" data-prop="offsetXMirrored" style="flex:1; background:#111; color:#ccc; border:1px solid #444; font-size:10px; padding:2px;">
+                   </div>
+               </div>
 
                 <div style="display:flex; align-items:center; justify-content: space-between; margin-top: 5px; padding-top: 5px; border-top: 1px solid #333;">
                     <div style="display:flex; align-items:center;">
@@ -2412,6 +2424,29 @@ class EditorPrincipal {
             if (props.length > 0) html += '<div style="background:#222; padding:5px; border-radius:4px; margin-top:5px;">';
             props.forEach(prop => {
                 const valor = scriptComp.instance[prop];
+
+                // DETECÇÃO DE CABEÇALHOS (Novo Visual)
+                if (prop.startsWith('SECTION_')) {
+                    // Remove o prefixo 'SECTION_' e formata o texto (Ex: SECTION_Wall_Jump -> Wall Jump)
+                    const titulo = prop.replace('SECTION_', '').replace(/_/g, ' ');
+                    html += `
+                        <div style="
+                            background: #444; 
+                            color: #fff; 
+                            padding: 4px 8px; 
+                            margin: 10px -5px 5px -5px; 
+                            font-size: 11px; 
+                            font-weight: bold; 
+                            border-left: 3px solid #f1c40f;
+                            text-transform: uppercase;
+                            letter-spacing: 0.5px;
+                        ">
+                            ${valor || titulo}
+                        </div>
+                    `;
+                    return; // Pula a criação do input normal
+                }
+
                 const isAnimProp = prop.startsWith('anim') && typeof valor === 'string';
                 html += `<div style="margin-bottom:4px;">`;
                 html += `<label style="font-size:10px; color:#888;">${prop}</label>`;
@@ -3898,6 +3933,7 @@ class EditorPrincipal {
                 parametros: { velocidadeHorizontal: 200, forcaPulo: 600, gravidade: 1200, alturaChao: 10000 },
                 estados: ['chao', 'pulando', 'caindo']
             };
+            info.parametros.alturaChao = Math.round(ent.y);
             info.parametros.alturaChao = Math.round(ent.y);
             codigo = gerador.gerarMovimentacaoPlataforma(info);
         } else if (tipo === 'patrulha') {

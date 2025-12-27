@@ -9,6 +9,7 @@ class GeradorScript {
             'Movimentação com Corrida': this.gerarMovimentacaoCorrida.bind(this),
             'Movimentação com Dash': this.gerarMovimentacaoDash.bind(this),
             'Movimentação Plataforma': this.gerarMovimentacaoPlataforma.bind(this),
+
             'IA Inimigo (Patrulha)': this.gerarIAInimigoPatrulha.bind(this),
             'Combate Melee': this.gerarScriptAtaqueMelee.bind(this),
             'Sistema de Morte': this.gerarScriptMorte.bind(this),
@@ -682,9 +683,14 @@ desenharGizmo(ctx) {
     gerarMovimentacaoPlataforma(info) {
         const velocidadeHorizontal = info.parametros.velocidadeHorizontal || 200;
         const forcaPulo = info.parametros.forcaPulo || 600;
+        // Parâmetros Wall Jump (defaults se não existirem)
+        const forcaWallJump = info.parametros.forcaWallJump || 650;
+        const impulsoHorizontalWall = info.parametros.impulsoHorizontalWall || 300;
+        const velocidadeDeslizamento = info.parametros.velocidadeDeslizamento || 50;
+        const distanciaDeteccaoParede = info.parametros.distanciaDeteccaoParede || 5;
 
         return `/**
- * Script de Movimentação Plataforma (Integrado com Física)
+ * Script de Movimentação Plataforma (Integrado com Física + Wall Jump)
  * Gerado automaticamente pela Game Engine
  * 
  * Descrição: ${info.descricao}
@@ -697,13 +703,43 @@ const animRun = 'run';
 const animJump = 'jump';
 const animFall = 'fall';
 const animCrouch = 'crouch';
+const animWallSlide = 'wallSlide'; // Nova animação opcional
 
 class MovimentacaoPlataformaScript {
     constructor(entidade) {
+        console.log('✅ SCRIPT DE MOVIMENTAÇÃO - v4.1 INTRA-WALL');
         this.entidade = entidade;
-        this.velocidadeHorizontal = ${velocidadeHorizontal};
-        this.velocidadeCorrida = ${velocidadeHorizontal * 1.8};
-        this.forcaPulo = ${forcaPulo};
+        this.entidade = entidade;
+        
+        // --- SEÇÃO MOVIMENTO ---
+        this.SECTION_Movimentacao = 'Básico';
+        this.mov_velocidade = ${velocidadeHorizontal};
+        this.mov_corrida = ${velocidadeHorizontal * 1.8};
+        this.mov_pulo = ${forcaPulo};
+        
+        // --- SEÇÃO WALL JUMP ---
+        this.SECTION_Wall_Jump = 'Ajustes Finos';
+        this.wall_forcaPulo = ${forcaWallJump}; // Força Y
+        this.wall_impulso = ${impulsoHorizontalWall}; // Força X
+        this.wall_slideVel = ${velocidadeDeslizamento};
+        
+        // [CONFIGURAÇÃO FINA DE DETECÇÃO]
+        this.SECTION_Deteccao_Parede = 'Sensores';
+        this.wall_tolerancia_dir = 25; // Distância (px) p/ Direita
+        this.wall_tolerancia_esq = 25; // Distância (px) p/ Esquerda
+        this.wall_margemChao = 5; // Altura (px) diferenciar chão
+        
+        // [OUTROS AJUSTES GAMEPLAY]
+        this.SECTION_Gameplay = 'Timers';
+        this.coyoteTime = 0.15; // Tempo para pular após cair (s)
+        this.wallJumpCooldownTime = 0.2; // Tempo sem controle após WJ (s)
+        
+        // Estados internos (não editáveis, começam com _)
+        this._distanciaDeteccao = ${distanciaDeteccaoParede};
+        this.naParede = false;
+        this.direcaoParede = 0; // -1 = esquerda, 1 = direita
+        this.wallJumpCooldown = 0;
+        this.wallStickBuffer = 0; // Buffer para manter naParede estável
 
         this.estado = 'parado';
 
@@ -718,8 +754,6 @@ class MovimentacaoPlataformaScript {
         // Inicializa velocidade X
         this.entidade.violenciaX = 0;
 
-        // Coyote Time (tempo para pular depois de sair do chão)
-        this.coyoteTime = 0.1; // 100ms
         this.coyoteTimer = 0;
     }
 
@@ -735,35 +769,65 @@ class MovimentacaoPlataformaScript {
             console.log('🏁 [Platformer] Spawn Point definido em:', this.entidade.x, this.entidade.y);
         }
 
+        this.engine = engine; // Guarda ref para debug se precisar
+
+        // Decrementa cooldown do Wall Jump
+        if (this.wallJumpCooldown > 0) {
+            // Se estiver em cooldown, pode limitar controle
+        }
+
         let vx = 0;
         const noChao = this.entidade.noChao;
+        let direcaoInput = 0;
 
         // Inputs Especiais
         const correndo = engine.teclaPressionada('Shift');
         const agachando = (engine.teclaPressionada('s') || engine.teclaPressionada('S') || engine.teclaPressionada('ArrowDown')) && noChao;
 
         // Teclas A/D ou Setas para movimento horizontal
-        // Se estiver agachado, não move (ou move devagar se quiser implementar crawl)
-        if (!agachando) {
-            const vel = correndo ? this.velocidadeCorrida : this.velocidadeHorizontal;
+        if (!agachando && this.wallJumpCooldown <= 0) {
+            const vel = correndo ? this.mov_corrida : this.mov_velocidade;
 
             if (engine.teclaPressionada('a') || engine.teclaPressionada('A') || engine.teclaPressionada('ArrowLeft')) {
                 vx = -vel;
+                direcaoInput = -1;
             }
             if (engine.teclaPressionada('d') || engine.teclaPressionada('D') || engine.teclaPressionada('ArrowRight')) {
                 vx = vel;
+                direcaoInput = 1;
+            }
+
+            this.entidade.velocidadeX = vx;
+        } else if (this.wallJumpCooldown > 0) {
+            // Mantém inércia durante cooldown do walljump (opcional)
+        }
+
+        // Detectar Parede SEMPRE (para debug)
+        this.detectarParede(direcaoInput);
+        
+        // Reseta se estiver no chão
+        if (noChao) {
+            this.naParede = false;
+        }
+
+        // Pular
+        if ((engine.teclaPrecionadaAgora(' ') || engine.teclaPrecionadaAgora('ArrowUp'))) {
+            // Pulo do chão
+            if (noChao && !agachando) {
+                this.pular();
+            } 
+            // Wall Jump
+            else if (this.naParede && !noChao) {
+                this.wallJump();
             }
         }
 
-        this.entidade.velocidadeX = vx;
-
-        // Espaço para pular (apenas se estiver no chão detectado pela engine E não estiver agachado)
-        if ((engine.teclaPrecionadaAgora(' ') || engine.teclaPrecionadaAgora('ArrowUp')) && noChao && !agachando) {
-            this.pular();
-        }
-
-        // Atualizar estado lógico (para uso interno ou debug)
-        if (!noChao) {
+        // Atualizar estado lógico
+        if (this.wallJumpCooldown > 0) {
+             this.estado = 'pulando';
+        } else if (this.naParede && !noChao) {
+            this.estado = 'naParede';
+        } else if (!noChao) {
             if (this.entidade.velocidadeY < 0) this.estado = 'pulando';
             else this.estado = 'caindo';
         } else if (agachando) {
@@ -775,76 +839,280 @@ class MovimentacaoPlataformaScript {
         }
     }
 
-    /**
-     * Inicia o pulo
-     */
     pular() {
-        // Aplica impulso vertical negativo (para cima)
-        this.entidade.velocidadeY = -this.forcaPulo;
-        // Força noChao false para não pular 2x no mesmo frame
+        this.entidade.velocidadeY = -this.mov_pulo;
         this.entidade.noChao = false;
     }
 
-    /**
-     * Atualiza a movimentação
-     */
-    atualizar(deltaTime) {
-        // A física (gravidade e colisão) é tratada pela ENGINE na classe Entidade.
-        // Aqui só precisamos validar limites ou animações se houver.
+    wallJump() {
+        this.entidade.velocidadeY = -this.wall_forcaPulo;
+        
+        // Impulso para o lado oposto da parede
+        const direcaoPulo = -this.direcaoParede; 
+        this.entidade.velocidadeX = direcaoPulo * this.wall_impulso;
+        
+        // Cooldown para não voltar pra parede instantaneamente
+        this.wallJumpCooldown = this.wallJumpCooldownTime || 0.2;
+        this.naParede = false;
+        console.log('🧗 Wall Jump!');
+    }
 
-        // --- COYOTE TIME ---
+    detectarParede(direcaoInput) {
+        // Só detecta parede se estiver NO AR
+        if (this.entidade.noChao) {
+            this.naParede = false;
+            return;
+        }
+        
+        // DESTICK: Se apertar para longe da parede, solta
+        if (this.naParede) {
+            // Se está na parede DIREITA e aperta ESQUERDA, solta
+            if (this.direcaoParede === 1 && direcaoInput === -1) {
+                this.naParede = false;
+                return;
+            }
+            // Se está na parede ESQUERDA e aperta DIREITA, solta
+            if (this.direcaoParede === -1 && direcaoInput === 1) {
+                this.naParede = false;
+                return;
+            }
+        }
+        
+        this.naParede = false;
+        if (!this.entidade.engine) return;
+
+        const colComp = this.entidade.obterComponente('CollisionComponent');
+        if (!colComp) return;
+
+        const bounds = colComp.obterLimitesAbsolutos(this.entidade);
+        let paredeEncontrada = false;
+
+        // --- 1. Detecção por OBJETOS (Entidades Sólidas) ---
+        for (const outra of this.entidade.engine.entidades) {
+            if (outra === this.entidade) continue;
+            
+            if (outra.solido) {
+                const outraCol = outra.obterComponente('CollisionComponent');
+                if (outraCol && outraCol.ativo) {
+                    const outraBounds = outraCol.obterLimitesAbsolutos(outra);
+                    
+                    // Usa CENTRO do player para garantir simetria (funcionar esq/dir igual)
+                    const playerCenterX = bounds.x + bounds.w / 2;
+                    const playerHalfWidth = bounds.w / 2;
+                    
+                    const playerLeft = bounds.x;
+                    const playerRight = bounds.x + bounds.w;
+                    const wallLeft = outraBounds.x;
+                    const wallRight = outraBounds.x + outraBounds.w;
+                    
+                    // Tolerância configurável (DIR/ESQ SEPARADOS)
+                    const tolDir = this.wall_tolerancia_dir || 25;
+                    const tolEsq = this.wall_tolerancia_esq || 25; 
+
+                    // Filtro de Chão SIMPLIFICADO E SEGURO
+                    // Se o topo do objeto está abaixo do pé do player (-margem), é chão.
+                    const margem = this.wall_margemChao || 5;
+                    const isChao = outraBounds.y >= (bounds.y + bounds.h - margem);
+                    if (isChao) continue;
+
+                    // Checa DIREITA - player tentando ir para direita
+                    // Distância do lado direito do player até o lado esquerdo da parede
+                    // -30 a 0: permite após física empurrar (-30 a 0), SEM tolerância extra
+                    const distDireita = wallLeft - playerRight;
+                    if (distDireita >= -30 && distDireita <= 0) {
+                        if (direcaoInput >= 0) { 
+                            paredeEncontrada = true; 
+                            this.direcaoParede = 1;
+                        }
+                    }
+                    
+                    // Checa ESQUERDA - player tentando ir para esquerda
+                    // Distância do lado esquerdo do player até o lado direito da parede
+                    const distEsquerda = playerLeft - wallRight;
+                    if (distEsquerda >= -30 && distEsquerda <= 0) {
+                        if (direcaoInput <= 0) { 
+                            paredeEncontrada = true; 
+                            this.direcaoParede = -1;
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- 2. Detecção por TILEMAPS (Tiles Sólidos) ---
+        if (!paredeEncontrada) {
+            const tilemapEnts = this.entidade.engine.entidades.filter(e => e.obterComponente('TilemapComponent'));
+            
+            for (const tilemapEnt of tilemapEnts) {
+                const tilemap = tilemapEnt.obterComponente('TilemapComponent');
+                if (!tilemap || !tilemap.ativo) continue;
+                
+                const tileSize = tilemap.tileSize || 32;
+                if (tileSize <= 0) continue;
+                
+                // Converter bounds do player para coordenadas de grid
+                const relX = bounds.x - tilemapEnt.x;
+                const relY = bounds.y - tilemapEnt.y;
+                
+                // Calcular area de verificação expandida para detectar paredes próximas
+                const tolDir = this.wall_tolerancia_dir || 25;
+                const tolEsq = this.wall_tolerancia_esq || 25;
+                const maxTol = Math.max(tolDir, tolEsq);
+                
+                const startCol = Math.floor((relX - maxTol) / tileSize);
+                const endCol = Math.floor((relX + bounds.w + maxTol) / tileSize);
+                const startRow = Math.floor(relY / tileSize);
+                const endRow = Math.floor((relY + bounds.h) / tileSize);
+                
+                // Usar centro do player para cálculos
+                const playerCenterX = bounds.x + bounds.w / 2;
+                const playerHalfWidth = bounds.w / 2;
+                const margem = this.wall_margemChao || 5;
+                
+                // Verificar tiles ao redor do player
+                for (let r = startRow; r <= endRow; r++) {
+                    for (let c = startCol; c <= endCol; c++) {
+                        const tile = tilemap.getTile(c, r);
+                        
+                        // Verificar se é tile sólido (não-plataforma)
+                        let isSolid = false;
+                        if (tile && typeof tile === 'object' && tile.solid && !tile.plataforma) {
+                            isSolid = true;
+                        }
+                        
+                        if (isSolid) {
+                            // Calcular posição absoluta do tile
+                            const tileX = tilemapEnt.x + c * tileSize;
+                            const tileY = tilemapEnt.y + r * tileSize;
+                            
+                            // Filtro de chão (igual ao de entidades)
+                            const isChao = tileY >= (bounds.y + bounds.h - margem);
+                            if (isChao) continue;
+                            
+                            // Calcular posições das bordas
+                            const playerLeft = bounds.x;
+                            const playerRight = bounds.x + bounds.w;
+                            const tileLeft = tileX;
+                            const tileRight = tileX + tileSize;
+                            
+                            // Checa DIREITA - distância do lado direito do player até o lado esquerdo do tile
+                            const distDireita = tileLeft - playerRight;
+                            if (distDireita >= -30 && distDireita <= 0) {
+                                if (direcaoInput >= 0) {
+                                    paredeEncontrada = true;
+                                    this.direcaoParede = 1;
+                                    break;
+                                }
+                            }
+                            
+                            // Checa ESQUERDA - distância do lado esquerdo do player até o lado direito do tile
+                            const distEsquerda = playerLeft - tileRight;
+                            if (distEsquerda >= -30 && distEsquerda <= 0) {
+                                if (direcaoInput <= 0) {
+                                    paredeEncontrada = true;
+                                    this.direcaoParede = -1;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (paredeEncontrada) break;
+                }
+                if (paredeEncontrada) break;
+            }
+        }
+
+        // Aplicar buffer para manter estado estável em tilesets
+        if (paredeEncontrada) {
+            this.naParede = true;
+            this.wallStickBuffer = 0.15; // Mantém por 150ms mesmo se perder contato
+        } else {
+            // Só desliga se o buffer expirou
+            if (this.wallStickBuffer <= 0) {
+                this.naParede = false;
+            }
+        }
+    }
+
+    atualizar(deltaTime) {
+        // Cooldown
+        if (this.wallJumpCooldown > 0) this.wallJumpCooldown -= deltaTime;
+        
+        // Wall Stick Buffer (decrementar)
+        if (this.wallStickBuffer > 0) this.wallStickBuffer -= deltaTime;
+
+        // Coyote Time
         if (this.entidade.noChao) {
             this.coyoteTimer = this.coyoteTime;
+            this.naParede = false;
+            this.wallStickBuffer = 0; // Reseta buffer ao tocar no chão
         } else {
             this.coyoteTimer -= deltaTime;
         }
 
-        // Se cair muito, reseta (opcional - morte)
+        // Wall Slide (apenas ao cair)
+        if (this.naParede && this.entidade.velocidadeY > 0 && this.entidade.velocidadeY > this.wall_slideVel) {
+            this.entidade.velocidadeY = this.wall_slideVel;
+        }
+
+        // Respawn
         if (this.entidade.y > 2000) {
-            // Respawn simples se cair do mundo
             this.entidade.y = 0;
             this.entidade.velocidadeY = 0;
         }
 
-        // --- Lógica de Animação ---
-        const sprite = this.entidade.obterComponente('SpriteComponent');
-        if (sprite) {
-            // Verifica se algum outro script está ocupado (ex: atacando)
+            // --- Lógica de Animação e Espelhamento ---
+            const sprite = this.entidade.obterComponente('SpriteComponent');
+            const col = this.entidade.obterComponente('CollisionComponent');
+            
+            // Lógica de Direção Simples (CollisionComponent trata o Offset agora)
+            const virarPara = (direita) => {
+                if (sprite) sprite.inverterX = !direita;
+            };
+            
+            // Verifica estado do script
             let scriptOcupado = false;
             for (const comp of this.entidade.componentes.values()) {
-                if (comp.tipo === 'ScriptComponent' && comp.instance && comp.instance.estaOcupado) {
-                    if (comp.instance.estaOcupado()) {
-                        scriptOcupado = true;
-                        break;
-                    }
+                if (comp.tipo === 'ScriptComponent' && comp.instance && comp.instance.estaOcupado && comp.instance !== this) {
+                         if (comp.instance.estaOcupado()) { scriptOcupado = true; break; }
                 }
             }
-            
-            // Se outro script está ocupado, não muda animação
-            if (scriptOcupado) return;
-            
-            // Espelhamento - SOMENTE quando há movimento horizontal
-            // Evita bug de flip ao agachar parado
-            if (this.entidade.velocidadeX > 0) sprite.inverterX = false;
-            else if (this.entidade.velocidadeX < 0) sprite.inverterX = true;
-            // Se velocidadeX === 0, MANTÉM o flip anterior (não muda)
+            if (!scriptOcupado) {
+                // Aplica direção
+                if (this.naParede) {
+                        if (this.direcaoParede === 1) virarPara(true);
+                        else virarPara(false);
+                } else if (Math.abs(this.entidade.velocidadeX) > 0.1) {
+                    if (this.entidade.velocidadeX > 0) virarPara(true);
+                    else virarPara(false);
+                }
+            }
 
-            // Transições de Animação
-            // Usamos coyoteTimer > 0 para considerar "chão" para fins de animação (evita flicker)
-            // Mas se velocidadeY for muito negativa (pulo), ignoramos
+            // Seleção de Animação
+            if (sprite) {
+                // ... (restante da lógica de animação) ...
+
+            // Seleção de Animação
             const isGrounded = this.entidade.noChao || (this.coyoteTimer > 0 && this.entidade.velocidadeY >= 0);
 
-            if (!isGrounded) {
-                // Ar
+            if (this.naParede && !isGrounded) {
+                if (sprite.animacoes && sprite.animacoes[animWallSlide]) {
+                    sprite.play(animWallSlide);
+                } else {
+                    sprite.play(animIdle); // Fallback
+                }
+            } else if (!isGrounded) {
                 if (this.entidade.velocidadeY < 0) sprite.play(animJump);
                 else sprite.play(animFall) || sprite.play(animJump);
             } else {
-                // Chão
                 if (this.estado === 'agachado') {
                     sprite.play(animCrouch) || sprite.play(animIdle);
                 } else if (Math.abs(this.entidade.velocidadeX) > 10) {
-                    if (this.estado === 'correndo') sprite.play(animRun) || sprite.play(animWalk);
-                    else sprite.play(animWalk);
+                    if (this.estado === 'correndo' && sprite.animacoes && sprite.animacoes[animRun]) {
+                        sprite.play(animRun);
+                    } else {
+                        sprite.play(animWalk);
+                    }
                 } else {
                     sprite.play(animIdle);
                 }
@@ -852,15 +1120,12 @@ class MovimentacaoPlataformaScript {
         }
     }
 
-    /**
-     * Retorna o estado atual
-     */
-    obterEstado() {
-        return this.estado;
-    }
+    obterEstado() { return this.estado; }
 }
 `;
     }
+
+
 
     /**
      * Gera script genérico

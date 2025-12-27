@@ -12,18 +12,23 @@ class CollisionComponent {
         this.altura = 32;
         this.offsetX = 0;
         this.offsetY = 0;
-        this.isTrigger = false; // Se true, apenas detecta mas não bloqueia
-        this.debugColor = '#00ff00'; // Visual no editor
+        this.isTrigger = false;
+
+        // Suporte a Espelhamento
+        this.mirrorX = false; // Se true, inverte offsetX quando sprite vira
+        this.offsetXMirrored = 0; // Offset alternativo para quando estiver invertido
+
+        this.debugColor = '#00ff00';
 
         // Estado
         this.entidade = null;
-        this.colisoesAtuais = new Set(); // IDs das entidades colidindo neste frame
+        this.colisoesAtuais = new Set();
         this.lastLog = 0;
     }
 
     inicializar(entidade) {
         this.entidade = entidade;
-        // Tenta ajustar tamanho inicial baseado na entidade se não configurado
+        // Tenta ajustar tamanho inicial baseado na entidade
         if (this.largura === 32 && entidade.largura) this.largura = entidade.largura;
         if (this.altura === 32 && entidade.altura) this.altura = entidade.altura;
     }
@@ -35,8 +40,19 @@ class CollisionComponent {
         const ent = entidade || this.entidade;
         if (!ent) return { x: 0, y: 0, w: 0, h: 0 };
 
+        let finalOffsetX = this.offsetX;
+
+        // Lógica de Espelhamento Automático
+        if (this.mirrorX) {
+            const sprite = ent.obterComponente('SpriteComponent');
+            if (sprite && sprite.inverterX) {
+                // Usa o offset espelhado explícito
+                finalOffsetX = this.offsetXMirrored;
+            }
+        }
+
         return {
-            x: ent.x + this.offsetX,
+            x: ent.x + finalOffsetX,
             y: ent.y + this.offsetY,
             w: this.largura,
             h: this.altura
@@ -505,6 +521,10 @@ class CollisionComponent {
             largura: this.largura,
             altura: this.altura,
             isTrigger: this.isTrigger,
+            // Novos Campos de Espelhamento
+            mirrorX: this.mirrorX,
+            offsetXMirrored: this.offsetXMirrored,
+
             // Legacy/Compatibilidade: salvar também em inglês para garantir se alguém ler diferente
             width: this.largura,
             height: this.altura
@@ -514,17 +534,28 @@ class CollisionComponent {
         // Robustez: aceita flat ou config-wrapped
         const cfg = dados.config || dados;
 
-        this.ativo = cfg.ativo !== undefined ? cfg.ativo : true;
-        this.offsetX = cfg.offsetX || 0;
-        this.offsetY = cfg.offsetY || 0;
+        if (cfg.ativo !== undefined) this.ativo = cfg.ativo;
+        if (cfg.offsetX !== undefined) this.offsetX = cfg.offsetX;
+        if (cfg.offsetY !== undefined) this.offsetY = cfg.offsetY;
+        if (cfg.largura !== undefined) this.largura = cfg.largura;
+        if (cfg.altura !== undefined) this.altura = cfg.altura;
+        if (cfg.isTrigger !== undefined) this.isTrigger = cfg.isTrigger;
 
-        // Prioridade para nomes em PT (largura), fallback para EN (width)
-        this.largura = cfg.largura !== undefined ? cfg.largura : (cfg.width || 32);
-        this.altura = cfg.altura !== undefined ? cfg.altura : (cfg.height || 32);
+        // Novos Campos de Espelhamento
+        if (cfg.mirrorX !== undefined) this.mirrorX = cfg.mirrorX;
+        if (cfg.offsetXMirrored !== undefined) this.offsetXMirrored = cfg.offsetXMirrored;
 
-        this.isTrigger = cfg.isTrigger || false;
+        // Legacy check
+        if (!cfg.largura && cfg.width) this.largura = cfg.width;
+        if (!cfg.altura && cfg.height) this.altura = cfg.height;
     }
+}
+// Exporta para ser usado pelo gerador de componentes
+// Exporta para ser usado pelo gerador de componentes
+if (typeof window !== 'undefined') {
+    window.CollisionComponent = CollisionComponent;
+} else if (typeof module !== 'undefined') {
+    module.exports = CollisionComponent;
 }
 
 export default CollisionComponent;
-
