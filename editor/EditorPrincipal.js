@@ -1180,7 +1180,7 @@ class EditorPrincipal {
         const mouseX = evento.clientX - rect.left;
         const mouseY = evento.clientY - rect.top;
 
-        const delta = evento.deltaY > 0 ? -0.1 : 0.1;
+        const delta = evento.deltaY > 0 ? -0.025 : 0.025;
         this.camera.aumentarZoom(delta, { x: mouseX, y: mouseY });
 
         // Atualizar UI
@@ -1574,7 +1574,8 @@ class EditorPrincipal {
 
             if (subPastas.length === 0 && entsNaPasta.length === 0) {
                 const empty = document.createElement('div');
-                empty.innerText = '(vazio)';
+                empty.setAttribute('data-i18n', 'panel.hierarchy.scene.empty');
+                empty.textContent = 'A cena está vazia. Adicione entidades para começar.';
                 empty.style.color = '#555';
                 empty.style.fontSize = '10px';
                 empty.style.marginLeft = '15px';
@@ -1667,8 +1668,7 @@ class EditorPrincipal {
         if (!this.entidadeSelecionada) {
             propriedadesContent.innerHTML = `
                 <div class="prop-empty">
-                    <div class="prop-empty-icon">🎯</div>
-                    <p>Selecione uma entidade para editar suas propriedades</p>
+                    <p><span data-i18n="panel.properties.noSelection">Selecione uma entidade para editar suas propriedades</span></p>
                 </div>`;
             return;
         }
@@ -1682,11 +1682,11 @@ class EditorPrincipal {
             <div class="prop-core-header" style="background:#1a1a2e; padding:10px; border-bottom:1px solid #444; margin-bottom:10px;">
                 <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
                     <div style="flex:1; margin-right:10px;">
-                         <label style="font-size:10px; color:#aaa; display:block;">Nome</label>
+                         <label style="font-size:10px; color:#aaa; display:block;"><span data-i18n="properties.name">Nome</span></label>
                          <input type="text" id="prop-nome" value="${ent.nome}" style="width:100%; background:#111; border:1px solid #444; color:white; padding:4px;">
                     </div>
                     <div style="width:30px;">
-                        <label style="font-size:10px; color:#aaa; display:block;">Ativo</label>
+                        <label style="font-size:10px; color:#aaa; display:block;"><span data-i18n="properties.enabled">Ativo</span></label>
                         <input type="checkbox" id="prop-enabled" ${!ent.locked ? 'checked' : ''}>
                     </div>
                 </div>

@@ -84,7 +84,7 @@ class Camera {
     /**
      * Aumenta o zoom
      */
-    aumentarZoom(incremento = 0.1, pontoFoco = null) {
+    aumentarZoom(incremento = 0.025, pontoFoco = null) {
         return this.definirZoom(this.zoom + incremento, pontoFoco);
     }
 

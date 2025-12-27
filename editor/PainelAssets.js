@@ -24,7 +24,8 @@ export class PainelAssets {
         header.style.borderBottom = '2px solid #333';
 
         const titulo = document.createElement('span');
-        titulo.innerText = 'Recursos';
+        titulo.setAttribute('data-i18n', 'panel.assets');
+        titulo.textContent = 'Recursos';
         titulo.style.fontWeight = 'bold';
         titulo.style.fontSize = '14px';
         titulo.style.color = '#fff';
@@ -89,7 +90,8 @@ export class PainelAssets {
         // Se vazio na raiz
         if (parentId === null && subFolders.length === 0 && assetsInLevel.length === 0) {
             const empty = document.createElement('div');
-            empty.innerText = 'Nenhum recurso importado.';
+            empty.setAttribute('data-i18n', 'assets.empty');
+            empty.textContent = 'Nenhum recurso importado.';
             empty.style.color = '#555';
             empty.style.fontStyle = 'italic';
             empty.style.padding = '10px';
