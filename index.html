@@ -24,7 +24,7 @@
             <div class="toolbar-group">
                 <!-- CORREÇÃO: Usando DIV em vez de BUTTON para permitir dropdown dentro (HTML Válido) -->
                 <div class="btn-tool" id="btn-criar" data-action="criar" role="button" tabindex="0">
-                    <span>+ Criar</span>
+                    <span data-i18n="btn.create">+ Criar</span>
                     <div class="dropdown-criar" id="dropdown-criar">
                         <button data-tipo="player">👤 Player</button>
                         <button data-tipo="npc">🤖 NPC</button>
@@ -56,17 +56,13 @@
 
             <!-- Grupo: Ações de Projeto -->
             <div class="toolbar-group">
-                <button class="btn-new" id="btn-new" title="Novo Projeto"><span data-i18n="menu.new">📄
-                        Novo</span></button>
-                <button class="btn-save" id="btn-save" title="Salvar (Ctrl+S)"><span data-i18n="menu.save">💾
-                        Salvar</span></button>
-                <button class="btn-load" id="btn-load" title="Carregar"><span data-i18n="menu.open">📂
-                        Carregar</span></button>
+                <button class="btn-new" id="btn-new" title="Novo Projeto"><span data-i18n="menu.new">Novo</span></button>
+                <button class="btn-save" id="btn-save" title="Salvar (Ctrl+S)"><span data-i18n="menu.save">Salvar</span></button>
+                <button class="btn-load" id="btn-load" title="Carregar"><span data-i18n="menu.open">Carregarr</span></button>
                 <input type="file" id="input-load-project" style="display:none" accept=".json">
-                <button class="btn-export" id="btn-export" title="Exportar"><span data-i18n="menu.export">📤
-                        Exportar</span></button>
+                <button class="btn-export" id="btn-export" title="Exportar"><span data-i18n="menu.export">Exportar</span></button>
                 <button class="btn-scene-settings" id="btn-scene-settings"
-                    title="Configurações da Cena (Cor de Fundo)">🎨 Cena</button>
+                    title="Configurações da Cena (Cor de Fundo)"><span data-i18n="panel.scene">Cena</span></button>
                 <button class="btn-settings" id="btn-settings" title="Configurações">⚙️</button>
             </div>
 
@@ -119,7 +115,7 @@
                 <div class="painel-hierarquia"
                     style="flex: 1; display: flex; flex-direction: column; min-height: 200px; border-bottom: 2px solid #555;">
                     <div class="painel-header">
-                        <h3>📂 Hierarquia</h3>
+                        <h3><span data-i18n="panel.hierarchy">📂 Hierarquia</span></h3>
                         <button class="btn-collapse">▼</button>
                     </div>
                     <div class="hierarquia-tree" id="hierarquia-tree" style="flex: 1; overflow-y: auto; padding: 5px;">
@@ -175,13 +171,12 @@
             <!-- Painel de Propriedades (Direita) -->
             <div class="painel-propriedades">
                 <div class="painel-header">
-                    <h3>⚙️ Propriedades</h3>
+                    <h3><span data-i18n="panel.properties">⚙️ Propriedades</span></h3>
                     <button class="btn-collapse">▼</button>
                 </div>
                 <div class="propriedades-content" id="propriedades-content">
                     <div class="prop-empty">
-                        <div class="prop-empty-icon">🎯</div>
-                        <p>Selecione uma entidade para editar suas propriedades</p>
+                        <p><span data-i18n="panel.properties.noSelection">Selecione uma entidade para editar suas propriedades</span></p>
                     </div>
                 </div>
             </div>

@@ -21,11 +21,15 @@ const translations = {
         'toolbar.snap': 'Ajustar à Grade',
 
         // Painéis
-        'panel.hierarchy': 'Hierarquia',
-        'panel.properties': 'Propriedades',
-        'panel.assets': 'Assets',
+        'panel.hierarchy': '📂 Hierarquia',
+        'panel.properties': '⚙️ Propriedades',
+        'panel.assets': 'Recursos',
         'panel.console': 'Console',
         'panel.scene': 'Cena',
+
+        // Msg
+        'panel.properties.noSelection': 'Selecione uma entidade para editar suas propriedades',
+        'panel.hierarchy.scene.empty': 'A cena está vazia. Adicione entidades para começar.',
 
         // Entidades
         'entity.new': 'Nova Entidade',
@@ -110,6 +114,7 @@ const translations = {
         'assets.preview': 'Visualização',
         'assets.type': 'Tipo',
         'assets.size': 'Tamanho',
+        'assets.empty': 'Nenhum recurso importado.',
 
         // Editores
         'editor.animation': 'Editor de Animações',
@@ -187,6 +192,10 @@ const translations = {
         'comp.meleeCombat': 'Combate Melee',
         'comp.respawn': 'Respawn',
         'comp.floatingText': 'Texto Flutuante',
+
+        // Attributos
+        'properties.name': 'Nome',
+        'properties.enabled': 'Ativo',
     },
 
     'en': {
@@ -206,11 +215,15 @@ const translations = {
         'toolbar.snap': 'Snap to Grid',
 
         // Panels
-        'panel.hierarchy': 'Hierarchy',
-        'panel.properties': 'Properties',
+        'panel.hierarchy': '📂 Hierarchy',
+        'panel.properties': '⚙️ Properties',
         'panel.assets': 'Assets',
         'panel.console': 'Console',
         'panel.scene': 'Scene',
+
+        // Msg
+        'panel.properties.noSelection': 'Select an entity to edit its properties',
+        'panel.hierarchy.scene.empty': 'The scene is empty. Add entities to get started.',
 
         // Entities
         'entity.new': 'New Entity',
@@ -295,6 +308,7 @@ const translations = {
         'assets.preview': 'Preview',
         'assets.type': 'Type',
         'assets.size': 'Size',
+        'assets.empty': 'No assets imported.',
 
         // Editors
         'editor.animation': 'Animation Editor',
@@ -372,6 +386,10 @@ const translations = {
         'comp.meleeCombat': 'Melee Combat',
         'comp.respawn': 'Respawn',
         'comp.floatingText': 'Floating Text',
+
+        // Attributes
+        'properties.name': 'Name',
+        'properties.enabled': 'Enabled',
     }
 };
 
