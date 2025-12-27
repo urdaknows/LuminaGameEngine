@@ -21,8 +21,8 @@ const translations = {
         'toolbar.snap': 'Ajustar à Grade',
 
         // Painéis
-        'panel.hierarchy': '📂 Hierarquia',
-        'panel.properties': '⚙️ Propriedades',
+        'panel.hierarchy': 'Hierarquia',
+        'panel.properties': 'Propriedades',
         'panel.assets': 'Recursos',
         'panel.console': 'Console',
         'panel.scene': 'Cena',
@@ -193,7 +193,7 @@ const translations = {
         'comp.respawn': 'Respawn',
         'comp.floatingText': 'Texto Flutuante',
 
-        // Attributos
+        // Atributos
         'properties.name': 'Nome',
         'properties.enabled': 'Ativo',
     },
@@ -215,8 +215,8 @@ const translations = {
         'toolbar.snap': 'Snap to Grid',
 
         // Panels
-        'panel.hierarchy': '📂 Hierarchy',
-        'panel.properties': '⚙️ Properties',
+        'panel.hierarchy': 'Hierarchy',
+        'panel.properties': 'Properties',
         'panel.assets': 'Assets',
         'panel.console': 'Console',
         'panel.scene': 'Scene',
