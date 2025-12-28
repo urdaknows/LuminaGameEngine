@@ -1526,7 +1526,8 @@ class EditorPrincipal {
         const btnAddSub = document.createElement('span');
         btnAddSub.innerText = '+';
         btnAddSub.title = 'Criar Subpasta';
-        btnAddSub.style.fontSize = '12px';
+        btnAddSub.style.fontSize = '18px';
+        
         btnAddSub.style.color = '#4ecdc4';
         btnAddSub.onclick = (e) => {
             e.stopPropagation();
@@ -1541,7 +1542,7 @@ class EditorPrincipal {
         const btnDel = document.createElement('span');
         btnDel.innerText = 'x';
         btnDel.title = 'Apagar Pasta';
-        btnDel.style.fontSize = '10px';
+        btnDel.style.fontSize = '16px';
         btnDel.style.color = '#ff4444';
         btnDel.style.marginLeft = '5px';
         btnDel.onclick = (e) => {

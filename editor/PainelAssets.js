@@ -20,7 +20,7 @@ export class PainelAssets {
         header.style.alignItems = 'center';
         header.style.marginBottom = '10px';
         header.style.padding = '8px';
-        header.style.background = '#1a1a2e';
+        header.style.background = '#16213e';
         header.style.borderBottom = '2px solid #333';
 
         const titulo = document.createElement('span');
