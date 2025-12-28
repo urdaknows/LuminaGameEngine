@@ -25,9 +25,10 @@ class GeradorScript {
      */
     gerarScriptRespawnInimigo() {
         return `/**
- * Script de Respawn (Inimigo)
- * Impede que a entidade seja destruída permanentemente ao morrer.
- * Em vez disso, ela fica oculta e reaparece após um tempo.
+ * Script de Respawn (Inimigo) v2.0
+ * - Padronizado com sistema HP
+ * - Reseta estado morto da IA
+ * - Compatível com animação de morte
  */
 
 class RespawnScript {
@@ -41,43 +42,38 @@ class RespawnScript {
         this.timer = 0;
         this.estaMorto = false;
         
-        // Salva estado inicial para restaurar
+        // Salva estado inicial
         this.startX = entidade.x;
         this.startY = entidade.y;
-        this.startVida = entidade.vida || 100;
+        this.startHP = entidade.hp || entidade.hpMax || 100;
         this.startGravidade = entidade.temGravidade;
         
-        // HOOK: Substitui o método "morrer" padrão da entidade
-        // Assim, quando receber dano letal, este script assume o controle.
+        // HOOK: Substitui método morrer
         this.entidade.morrer = this.aoMorrer.bind(this);
         
-        console.log('[Respawn] Sistema ativado para:', entidade.nome);
+        console.log('[Respawn v2] Ativado:', entidade.nome, '| HP:', this.startHP);
     }
 
     aoMorrer() {
         if (this.estaMorto) return;
         
-        console.log('💀 Morreu! Respawn em:', this.tempoRespawn, 's');
+        console.log('💀 Respawn iniciado! Renascerá em', this.tempoRespawn, 's');
         this.estaMorto = true;
         this.timer = this.tempoRespawn;
 
-        // Esconde e desativa a entidade
+        // Esconde e desativa
         this.entidade.visivel = false;
-        this.entidade.temGravidade = false; // Para não cair no vazio
+        this.entidade.temGravidade = false;
         this.entidade.velocidadeX = 0;
         this.entidade.velocidadeY = 0;
         
-        // Move para longe (Limbo) para evitar colisões fantasmas
-        this.entidade.x = -9999; 
+        // Move para limbo
+        this.entidade.x = -9999;
         this.entidade.y = -9999;
     }
 
     atualizar(deltaTime) {
-        if (!this.estaMorto) {
-            // Se quiser atualizar o Ponto de Spawn dinamicamente (ex: patrulha), faça aqui.
-            // Por enquanto, spawna onde nasceu (startX/Y do construtor).
-            return;
-        }
+        if (!this.estaMorto) return;
 
         this.timer -= deltaTime;
 
@@ -90,8 +86,8 @@ class RespawnScript {
         console.log('✨ Renasceu:', this.entidade.nome);
         this.estaMorto = false;
 
-        // Restaura Status
-        this.entidade.vida = this.startVida;
+        // Restaura HP
+        this.entidade.hp = this.startHP;
         this.entidade.visivel = true;
         this.entidade.temGravidade = this.startGravidade;
         
@@ -101,11 +97,27 @@ class RespawnScript {
         this.entidade.velocidadeX = 0;
         this.entidade.velocidadeY = 0;
         
-        // Reinicia animação se precisar
+        // Reseta estado morto da IA (se tiver)
+        for (const [tipo, comp] of this.entidade.componentes.entries()) {
+            if (comp.tipo === 'ScriptComponent' && comp.instance) {
+                const nome = comp.instance.constructor.name;
+                
+                if (nome === 'InimigoPatrulhaScript') {
+                    comp.instance.morto = false;
+                    comp.instance.tempoMorte = 0;
+                    comp.instance.tomouDano = false;
+                    comp.instance.estado = 'patrulhando';
+                    console.log('✅ IA resetada!');
+                }
+            }
+        }
+        
+        // Reinicia animação
         const sprite = this.entidade.obterComponente('SpriteComponent');
         if (sprite) {
-            sprite.play('idle') || sprite.play('walk');
-            sprite.flashing = false; // Remove efeito de dano se tiver
+            sprite.autoplayAnim = 'walk'; // Reativa autoplay
+            sprite.play('walk') || sprite.play('idle');
+            sprite.flashing = false;
         }
     }
 }`;
@@ -549,55 +561,153 @@ class MovimentacaoDashScript {
         const distancia = info.parametros.distancia || 200;
 
         return `/**
- * Script de IA: Inimigo Patrulha + Ataque (Debug Version)
- * Gerado automaticamente pela Game Engine
+ * Script de IA: Inimigo Patrulha v2.0 - COMPLETO
+ * - Animação de Morte
+ * - Sistema de HP padronizado
+ * - Perseguição do Player
+ * - Feedback visual de dano
+ * - Drop de XP
  */
-
-const walk = 'walk';
-const attack = 'attack'; 
 
 class InimigoPatrulhaScript {
     constructor(entidade) {
         this.entidade = entidade;
         
-        // Parâmetros
+        // === STATS ===
+        this.hpMax = 50;
+        this.entidade.hp = this.hpMax;
+        this.entidade.hpMax = this.hpMax;
+        
+        // === MOVIMENTO ===
         this.velocidade = ${velocidade};
+        this.velocidadePerseguicao = ${velocidade * 1.5}; // 50% mais rápido ao perseguir
         this.distanciaPatrulha = ${distancia};
         
-        // Combate
-        this.rangeAtaque = 40; // Reduzido para 40px (Melee Close Range)
+        // === COMBATE ===
+        this.rangeAtaque = 40; // Melee range
+        this.rangePerseguicao = 300; // Distância para começar a perseguir
         this.dano = 10;
-        this.cooldownAtaque = 1500; 
+        this.cooldownAtaque = 1500;
         this.ultimoAtaque = 0;
         
-        this.inverterSprite = true; 
+        // === MORTE & XP ===
+        this.xpDrop = 25; // XP que dá ao morrer
+        this.morto = false;
+        this.tempoMorte = 0;
         
+        // === DANO VISUAL ===
+        this.tomouDano = false;
+        this.tempoDano = 0;
+        this.duracaoDano = 0.3; // Pisca por 0.3s
+        
+        this.inverterSprite = true;
         this.startX = entidade.x;
-        this.direcao = 1; 
+        this.direcao = 1;
         this.entidade.temGravidade = true;
         
         this.minX = this.startX - this.distanciaPatrulha;
         this.maxX = this.startX + this.distanciaPatrulha;
         
-        this.estado = 'patrulhando';
+        this.estado = 'patrulhando'; // patrulhando, perseguindo, atacando, morto
         
-        console.log('[IA Patrulha] Iniciado para:', entidade.nome);
+        console.log('[IA Patrulha v2] Iniciado:', entidade.nome, '| HP:', this.hpMax);
+    }
+    
+    receberDano(dano) {
+        if (this.morto) return;
+        
+        this.entidade.hp -= dano;
+        this.tomouDano = true;
+        this.tempoDano = 0;
+        
+        console.log('💥', this.entidade.nome, 'recebeu', dano, 'de dano! HP:', this.entidade.hp + '/' + this.hpMax);
+        
+        // Feedback visual
+        const sprite = this.entidade.obterComponente('SpriteComponent');
+        if (sprite) {
+            sprite.flashing = true;
+            sprite.flashDuration = this.duracaoDano;
+        }
+        
+        if (this.entidade.hp <= 0) {
+            this.morrer();
+        }
+    }
+    
+    morrer() {
+        if (this.morto) return;
+        
+        this.morto = true;
+        this.tempoMorte = 0;
+        this.entidade.velocidadeX = 0;
+        this.entidade.velocidadeY = 0;
+        
+        console.log('💀', this.entidade.nome, 'morreu!');
+        
+        // Toca animação death
+        const sprite = this.entidade.obterComponente('SpriteComponent');
+        if (sprite) {
+            sprite.autoplayAnim = '';
+            if (sprite.animacoes && sprite.animacoes['death']) {
+                sprite.play('death');
+                sprite.animacoes['death'].loop = false;
+            } else {
+                // Fallback: usa idle
+                sprite.play('idle');
+            }
+        }
+        
+        // Drop de XP para o player
+        this.dropXP();
+    }
+    
+    dropXP() {
+        if (!this.entidade.engine) return;
+        
+        const player = this.encontrarPlayer();
+        if (player && player.ganharXP) {
+            player.ganharXP(this.xpDrop);
+            console.log('✨ Player ganhou', this.xpDrop, 'XP!');
+        } else if (player && player.xp !== undefined) {
+            player.xp += this.xpDrop;
+            console.log('✨ Player XP:', player.xp);
+        }
+    }
+    
+    encontrarPlayer() {
+        if (!this.entidade.engine) return null;
+        
+        const entidades = this.entidade.engine.entidades;
+        return entidades.find(e => {
+            const nome = (e.nome || '').toLowerCase();
+            return nome.includes('player') || nome.includes('jogador') || nome.includes('hero') || e.tipo === 'player';
+        });
     }
 
     atualizar(deltaTime) {
-        // Encontrar Player (Case Insensitive)
-        let player = null;
-        if (this.entidade.engine) {
-             const entidades = this.entidade.engine.entidades;
-             player = entidades.find(e => {
-                 const nome = (e.nome || '').toLowerCase();
-                 return nome.includes('player') || nome.includes('jogador') || nome.includes('hero') || e.tipo === 'player';
-             });
+        // Se morto, aguarda e depois chama script de respawn
+        if (this.morto) {
+            this.tempoMorte += deltaTime;
+            // Após 1.5s, chama método morrer da entidade (será capturado pelo RespawnScript)
+            if (this.tempoMorte >= 1.5 && this.entidade.morrer) {
+                this.entidade.morrer();
+            }
+            return;
         }
         
-        let atacando = false;
+        // Atualiza feedback de dano
+        if (this.tomouDano) {
+            this.tempoDano += deltaTime;
+            if (this.tempoDano >= this.duracaoDano) {
+                this.tomouDano = false;
+                const sprite = this.entidade.obterComponente('SpriteComponent');
+                if (sprite) sprite.flashing = false;
+            }
+        }
+        
+        const player = this.encontrarPlayer();
+        
         if (player) {
-            // Usar CENTRO para cálculo mais preciso
             const c1 = this.entidade.obterCentro ? this.entidade.obterCentro() : {x: this.entidade.x, y: this.entidade.y};
             const c2 = player.obterCentro ? player.obterCentro() : {x: player.x, y: player.y};
             
@@ -605,12 +715,10 @@ class InimigoPatrulhaScript {
             const dy = c2.y - c1.y;
             const dist = Math.sqrt(dx*dx + dy*dy);
             
+            // ATAQUE
             if (dist < this.rangeAtaque) {
-                atacando = true;
-                
-                // Parar movimento ao atacar (opcional, mas bom pra hit-stop)
+                this.estado = 'atacando';
                 this.entidade.velocidadeX = 0;
-
                 this.direcao = dx > 0 ? 1 : -1;
 
                 if (Date.now() - this.ultimoAtaque > this.cooldownAtaque) {
@@ -619,60 +727,100 @@ class InimigoPatrulhaScript {
 
                 const sprite = this.entidade.obterComponente('SpriteComponent');
                 if (sprite) {
-                    sprite.play(attack);
+                    sprite.play('attack');
                     const deveInverter = (this.direcao < 0);
                     sprite.inverterX = this.inverterSprite ? !deveInverter : deveInverter;
                 }
-            } else {
-                // Se não estiver atacando, mas estiver vendo o player (perseguição simples opcional)
-                // Para este script é só patrulha, então se o player sair do range, ele volta a patrulhar.
-                // Mas podemos forçar ele a ir até o player se estiver perto?
-                // Vamos manter patrulha simples para não complicar.
             }
-    } else {
-    if (Math.random() < 0.005) console.warn('[IA Patrulha] Player NÃO encontrado!');
-}
+            // PERSEGUIÇÃO
+            else if (dist < this.rangePerseguicao) {
+                this.estado = 'perseguindo';
+                this.direcao = dx > 0 ? 1 : -1;
+                
+                const movimento = this.velocidadePerseguicao * this.direcao * deltaTime;
+                this.entidade.x += movimento;
+                
+                const sprite = this.entidade.obterComponente('SpriteComponent');
+                if (sprite) {
+                    sprite.play('run') || sprite.play('walk');
+                    const deveInverter = (this.direcao < 0);
+                    sprite.inverterX = this.inverterSprite ? !deveInverter : deveInverter;
+                }
+            }
+            // PATRULHA
+            else {
+                this.patrulhar(deltaTime);
+            }
+        } else {
+            // Sem player, patrulha normal
+            this.patrulhar(deltaTime);
+        }
+    }
+    
+    patrulhar(deltaTime) {
+        this.estado = 'patrulhando';
+        
+        const movimento = this.velocidade * this.direcao * deltaTime;
+        this.entidade.x += movimento;
 
-if (!atacando) {
-    const movimento = this.velocidade * this.direcao * deltaTime;
-    this.entidade.x += movimento;
+        if (this.entidade.x >= this.maxX) {
+            this.entidade.x = this.maxX;
+            this.direcao = -1;
+        } else if (this.entidade.x <= this.minX) {
+            this.entidade.x = this.minX;
+            this.direcao = 1;
+        }
 
-    if (this.entidade.x >= this.maxX) {
-        this.entidade.x = this.maxX;
-        this.direcao = -1;
-    } else if (this.entidade.x <= this.minX) {
-        this.entidade.x = this.minX;
-        this.direcao = 1;
+        const sprite = this.entidade.obterComponente('SpriteComponent');
+        if (sprite) {
+            const deveInverter = (this.direcao < 0);
+            sprite.inverterX = this.inverterSprite ? !deveInverter : deveInverter;
+            sprite.play('walk');
+        }
     }
 
-    const sprite = this.entidade.obterComponente('SpriteComponent');
-    if (sprite) {
-        const deveInverter = (this.direcao < 0);
-        sprite.inverterX = this.inverterSprite ? !deveInverter : deveInverter;
-        sprite.play(walk);
-    }
-}
+    atacar(player) {
+        console.log('⚔️ Inimigo ATAQUE =>', player.nome);
+        this.ultimoAtaque = Date.now();
+
+        // Tenta usar o método receberDano do player (se tiver)
+        if (player.receberDano && typeof player.receberDano === 'function') {
+            player.receberDano(this.dano);
+        } 
+        // Senão, procura script de movimentação com receberDano
+        else {
+            let danoAplicado = false;
+            for (const [tipo, comp] of player.componentes.entries()) {
+                if (comp.tipo === 'ScriptComponent' && comp.instance && comp.instance.receberDano) {
+                    comp.instance.receberDano(this.dano);
+                    danoAplicado = true;
+                    break;
+                }
+            }
+            
+            // Fallback: diminui HP diretamente
+            if (!danoAplicado && player.hp !== undefined) {
+                player.hp -= this.dano;
+                console.log('   -> Player HP:', player.hp);
+            }
+        }
     }
 
-atacar(player) {
-    console.log('⚔️ Inimigo ATAQUE => Player!', player.nome);
-    this.ultimoAtaque = Date.now();
-
-    if (player.receberDano) {
-        player.receberDano(this.dano);
-    } else if (player.vida !== undefined) {
-        player.vida -= this.dano;
-        console.log('   -> Player Vida Restante:', player.vida);
+    desenharGizmo(ctx) {
+        if (this.morto) return;
+        
+        // Range de ataque (vermelho)
+        ctx.strokeStyle = '#ff0000';
+        ctx.beginPath();
+        ctx.arc(this.entidade.x, this.entidade.y, this.rangeAtaque, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        // Range de perseguição (amarelo)
+        ctx.strokeStyle = '#ffff00';
+        ctx.beginPath();
+        ctx.arc(this.entidade.x, this.entidade.y, this.rangePerseguicao, 0, Math.PI * 2);
+        ctx.stroke();
     }
-}
-
-desenharGizmo(ctx) {
-    // Range
-    ctx.strokeStyle = '#ffff00';
-    ctx.beginPath();
-    ctx.arc(this.entidade.x, this.entidade.y, this.rangeAtaque, 0, Math.PI * 2);
-    ctx.stroke();
-}
 }
 `;
     }
