@@ -70,37 +70,37 @@
         <div id="modal-settings" class="modal hidden">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3>⚙️ Configurações do Editor</h3>
+                    <h3 data-i18n="settings.title">⚙️ Configurações do Editor</h3>
                     <button class="btn-close-modal" id="btn-close-settings">✖</button>
                 </div>
                 <div class="modal-body">
                     <!-- Seletor de Idioma -->
                      <div class="form-group">
-                        <label>Language</label>
+                        <label data-i18n="settings.language">Idioma</label>
                          <div id="language-selector-container"></div>
                      </div>
                     
                     <div class="form-group">
-                        <label>Tamanho da Grid (px)</label>
+                        <label data-i18n="settings.gridSize">Tamanho da Grid (px)</label>
                         <input type="number" id="conf-grid-size" value="50" min="8" max="128" step="8">
                     </div>
                     <div class="form-group-checkbox">
                         <input type="checkbox" id="conf-snap" checked>
-                        <label for="conf-snap">Snap to Grid (Imã)</label>
+                        <label for="conf-snap" data-i18n="settings.snapToGrid">Snap to Grid (Imã)</label>
                     </div>
 
                     <div class="form-group-checkbox">
                         <input type="checkbox" id="conf-show-grid" checked>
-                        <label for="conf-show-grid">Mostrar Grid</label>
+                        <label for="conf-show-grid" data-i18n="settings.showGrid">Mostrar Grid</label>
                     </div>
 
                     <div class="form-group-checkbox">
                         <input type="checkbox" id="conf-show-gizmos" checked>
-                        <label for="conf-show-gizmos">Mostrar Gizmos (Colliders)</label>
+                        <label for="conf-show-gizmos" data-i18n="settings.showGizmos">Mostrar Gizmos (Colliders)</label>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button id="btn-apply-settings">Aplicar</button>
+                    <button id="btn-apply-settings" data-i18n="settings.btn.save">Aplicar</button>
                 </div>
             </div>
         </div>

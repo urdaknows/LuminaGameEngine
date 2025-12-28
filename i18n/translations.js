@@ -196,6 +196,15 @@ const translations = {
         // Atributos
         'properties.name': 'Nome',
         'properties.enabled': 'Ativo',
+
+        // Configurações do Editor
+        'settings.title': 'Configurações do Editor',
+        'settings.language': 'Idioma',
+        'settings.gridSize': 'Tamanho da Grid (px)',
+        'settings.snapToGrid': 'Snap to Grid (Imã)',
+        'settings.showGrid': 'Mostrar Grid',
+        'settings.showGizmos': 'Mostrar Gizmos (Colliders)',
+        'settings.btn.save': 'Salvar Configurações',
     },
 
     'en': {
@@ -390,6 +399,16 @@ const translations = {
         // Attributes
         'properties.name': 'Name',
         'properties.enabled': 'Enabled',
+
+        // Editor Settings
+        'settings.title': 'Quick Settings',
+        'settings.language': 'Language',
+        'settings.gridSize': 'Grid Size (px)',
+        'settings.snapToGrid': 'Snap to Grid',
+        'settings.showGrid': 'Show Grid',
+        'settings.showGizmos': 'Show Gizmos (Colliders)',
+        'settings.btn.save': 'Save Settings',
+
     }
 };
 
