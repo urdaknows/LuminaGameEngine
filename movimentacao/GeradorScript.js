@@ -786,13 +786,23 @@ class InimigoPatrulhaScript {
         console.log('⚔️ Inimigo ATAQUE =>', player.nome);
         this.ultimoAtaque = Date.now();
 
-        // Tenta usar o método receberDano do player (se tiver)
-        if (player.receberDano && typeof player.receberDano === 'function') {
-            player.receberDano(this.dano);
-        } 
-        // Senão, procura script de movimentação com receberDano
-        else {
-            let danoAplicado = false;
+        // PRIORIDADE 1: Procura o script de movimentação (tem invencibilidade)
+        let danoAplicado = false;
+        for (const [tipo, comp] of player.componentes.entries()) {
+            if (comp.tipo === 'ScriptComponent' && comp.instance) {
+                const nome = comp.instance.constructor.name;
+                
+                // Procura especificamente o MovimentacaoPlataformaScript
+                if (nome === 'MovimentacaoPlataformaScript' && comp.instance.receberDano) {
+                    comp.instance.receberDano(this.dano);
+                    danoAplicado = true;
+                    break;
+                }
+            }
+        }
+        
+        // PRIORIDADE 2: Se não achou, procura qualquer script com receberDano
+        if (!danoAplicado) {
             for (const [tipo, comp] of player.componentes.entries()) {
                 if (comp.tipo === 'ScriptComponent' && comp.instance && comp.instance.receberDano) {
                     comp.instance.receberDano(this.dano);
@@ -800,12 +810,12 @@ class InimigoPatrulhaScript {
                     break;
                 }
             }
-            
-            // Fallback: diminui HP diretamente
-            if (!danoAplicado && player.hp !== undefined) {
-                player.hp -= this.dano;
-                console.log('   -> Player HP:', player.hp);
-            }
+        }
+        
+        // FALLBACK: Diminui HP diretamente
+        if (!danoAplicado && player.hp !== undefined) {
+            player.hp -= this.dano;
+            console.log('   -> Player HP:', player.hp);
         }
     }
 
@@ -893,12 +903,28 @@ class MovimentacaoPlataformaScript {
         this.slide_cooldown = 0.8; // Tempo de espera entre slides (segundos)
         
 
+        
         // [OUTROS AJUSTES GAMEPLAY]
         this.SECTION_Gameplay = 'Timers';
         this.coyoteTime = 0.15; // Tempo para pular após cair (s)
         this.wallJumpCooldownTime = 0.2; // Tempo sem controle após WJ (s)
         
-        // Estados internos (não editáveis, começam com _)
+        // === INVENCIBILIDADE (I-FRAMES) ===
+        this.SECTION_Invencibilidade = 'Sistema de Dano';
+        this.iframes_duracao = 1.5; // Duração da invencibilidade (segundos)
+        this.iframes_piscar = 0.1; // Velocidade do piscar (segundos)
+        this.hit_animacao = 'hit'; // Nome da animação de hit (opcional)
+        
+        
+        // Estado interno de invencibilidade
+        this._invencivel = false;
+        this._tempoInvencivel = 0;
+        this._tempoPiscar = 0;
+        this._visivel = true;
+        this._tocandoHit = false; // Flag para controlar animação de hit
+        this._tempoHit = 0; // Timer da animação de hit
+        
+        // === MORTE ===stados internos (não editáveis, começam com _)
         this._distanciaDeteccao = ${distanciaDeteccaoParede};
         this.naParede = false;
         this.direcaoParede = 0; // -1 = esquerda, 1 = direita
@@ -1334,7 +1360,22 @@ class MovimentacaoPlataformaScript {
             this.entidade.velocidadeY = 0;
         }
 
-            // --- Lógica de Animação e Espelhamento ---
+        // === CONTROLA DURAÇÃO DA ANIMAÇÃO DE HIT (DEVE ESTAR AQUI, SEMPRE EXECUTA) ===
+        if (this._tocandoHit) {
+            this._tempoHit += deltaTime;
+            
+            // Após 0.5s, volta para idle
+            if (this._tempoHit >= 0.5) {
+                this._tocandoHit = false;
+                
+                const spriteHit = this.entidade.obterComponente('SpriteComponent');
+                if (spriteHit) {
+                    spriteHit.play(animIdle);
+                }
+            }
+        }
+
+            //Lógica de Animação e Espelhamento ---
             const sprite = this.entidade.obterComponente('SpriteComponent');
             const col = this.entidade.obterComponente('CollisionComponent');
             
@@ -1361,23 +1402,23 @@ class MovimentacaoPlataformaScript {
                 }
             }
 
-            // Seleção de Animação
-            if (sprite) {
-                // ... (restante da lógica de animação) ...
-
-            // Seleção de Animação
+            // Seleção de Animação - SÓ se não estiver ocupado!
             const isGrounded = this.entidade.noChao || (this.coyoteTimer > 0 && this.entidade.velocidadeY >= 0);
 
-            if (this.naParede && !isGrounded) {
-                if (sprite.animacoes && sprite.animacoes[animWallSlide]) {
-                    sprite.play(animWallSlide);
+            // IMPORTANTE: Não sobrescrever animação de hit enquanto estiver tocando
+            const estaTocandoHit = this._tocandoHit;
+            
+            if (!scriptOcupado && !estaTocandoHit && sprite) {
+                if (this.naParede && !isGrounded) {
+                    if (sprite.animacoes && sprite.animacoes[animWallSlide]) {
+                        sprite.play(animWallSlide);
+                    } else {
+                        sprite.play(animIdle); // Fallback
+                    }
+                } else if (!isGrounded) {
+                    if (this.entidade.velocidadeY < 0) sprite.play(animJump);
+                    else sprite.play(animFall) || sprite.play(animJump);
                 } else {
-                    sprite.play(animIdle); // Fallback
-                }
-            } else if (!isGrounded) {
-                if (this.entidade.velocidadeY < 0) sprite.play(animJump);
-                else sprite.play(animFall) || sprite.play(animJump);
-            } else {
                 if (this.estado === 'slide') {
                     // Slide - animação de deslizar
                     if (sprite.animacoes && sprite.animacoes[animSlide]) {
@@ -1405,8 +1446,87 @@ class MovimentacaoPlataformaScript {
                 } else {
                     sprite.play(animIdle);
                 }
+            } // Fecha verificação !scriptOcupado
+            
+            // === ATUALIZA INVENCIBILIDADE ===
+            if (this._invencivel) {
+                this._tempoInvencivel += deltaTime;
+                this._tempoPiscar += deltaTime;
+                
+                // Piscar (alternando flag)
+                if (this._tempoPiscar >= this.iframes_piscar) {
+                    this._tempoPiscar = 0;
+                    this._visivel = !this._visivel;
+                    
+                    // Marca entidade como piscando
+                    this.entidade._piscando = !this._visivel;
+                }
+                
+                // Fim da invencibilidade
+                if (this._tempoInvencivel >= this.iframes_duracao) {
+                    this._invencivel = false;
+                    this._visivel = true;
+                    this.entidade._piscando = false;
+                    
+                    console.log('🛡️ Invencibilidade terminou (durou', this._tempoInvencivel.toFixed(2), 's)');
+                }
             }
         }
+    }
+    
+    /**
+     * Método chamado quando o player recebe dano
+     * IMPORTANTE: Este método é chamado pelo sistema de combate
+     */
+    receberDano(quantidade) {
+        // Se está invencível, ignora o dano
+        if (this._invencivel) {
+            console.log('🛡️ Dano bloqueado (invencível)');
+            return 0;
+        }
+        
+        console.log('💥 [Platformer] Player recebeu', quantidade, 'de dano!');
+        console.log('   Duração invencibilidade:', this.iframes_duracao, 's');
+        
+        // Ativa invencibilidade
+        this._invencivel = true;
+        this._tempoInvencivel = 0;
+        this._tempoPiscar = 0;
+        
+        // Toca animação de hit (se existir)
+        const sprite = this.entidade.obterComponente('SpriteComponent');
+        if (sprite && sprite.animacoes && sprite.animacoes[this.hit_animacao]) {
+            sprite.play(this.hit_animacao);
+            this._tocandoHit = true;
+            this._tempoHit = 0;
+            console.log('💥 Tocando animação:', this.hit_animacao);
+        } else if (sprite) {
+            // Se não tem animação de hit, apenas pisca vermelho
+            sprite.flashing = true;
+            sprite.flashDuration = 0.2;
+        }
+        
+        // Procura o StatsRPG para aplicar o dano
+        let danoAplicado = false;
+        for (const [tipo, comp] of this.entidade.componentes.entries()) {
+            if (comp.tipo === 'ScriptComponent' && comp.instance) {
+                const nome = comp.instance.constructor.name;
+                
+                if (nome === 'StatsRPG' && comp.instance.receberDano) {
+                    comp.instance.receberDano(quantidade);
+                    danoAplicado = true;
+                    break;
+                }
+            }
+        }
+        
+        // Se não encontrou StatsRPG, aplica dano direto no HP
+        if (!danoAplicado && this.entidade.hp !== undefined) {
+            this.entidade.hp -= quantidade;
+            console.log('   HP:', this.entidade.hp);
+        }
+        
+        return quantidade;
     }
 
     obterEstado() { return this.estado; }
@@ -1955,24 +2075,39 @@ class CombateMeleeScript {
         // --- CONFIGURAÇÕES DO ATAQUE ---
         // Ajuste estes valores no Painel de Propriedades!
         
-        this.teclaAtaque = 'Control'; 
-        this.animAttack = 'attack';
-        this.cooldownAtaque = 0.5;    // Tempo total antes de poder atacar de novo
+        this.teclaAtaque = 'Control';  // Tecla para atacar
+        this.animAttack = 'attack';    // Nome da animação de ataque
+        this.cooldownAtaque = 0.5;     // Tempo antes de atacar novamente
+        
+        // === TIMING DO ATAQUE ===
+        // Configure quando a hitbox aparece durante a animação
+        this.inicioHitbox = 0.1;      // Delay (segundos) antes da hitbox ativar
+        this.duracaoHitbox = 0.2;     // Quanto tempo a hitbox fica ativa (segundos)
 
-        // Sincronia com Animação (Delay para hitbox aparecer)
-        this.inicioHitbox = 0.1;      // Espera 0.1s para ativar a hitbox (Simula Windup)
-        this.duracaoHitbox = 0.2;     // A hitbox fica ativa por 0.2s
-
-        // Hitbox (Retângulo vermelho)
-        this.hitboxX = 30;   // Distância à frente do personagem
-        this.hitboxY = 0;    // Ajuste vertical (0 = centro)
-        this.hitboxW = 40;   // Largura da área
-        this.hitboxH = 40;   // Altura da área
+        // === HITBOX (Área de Colisão) ===
+        // Ajuste fino da área que causa dano
+        this.hitboxX = 30;   // Distância à frente do personagem (pixels)
+        this.hitboxY = 0;    // Deslocamento vertical (0=centro, negativo=sobe, positivo=desce)
+        this.hitboxW = 40;   // Largura da área de ataque
+        this.hitboxH = 40;   // Altura da área de ataque
+        
+        // === DEBUG ===
+        // @type boolean
+        // DICA: Mude para false ou 0 para desativar o retângulo vermelho
+        this.mostrarDebugHitbox = true;
 
         // Controle
         this.inimigosAtingidos = new Set();
         this.foiPressionado = false;
         this.tempoCooldown = 0;
+    }
+
+    iniciar() {
+        // Converte qualquer valor para boolean (aceita: true, "true", 1, "1", etc)
+        const valor = String(this.mostrarDebugHitbox).toLowerCase().trim();
+        this.mostrarDebugHitbox = (valor === 'true' || valor === '1' || valor === 'yes' || valor === 'sim');
+        
+        console.log('🐛 [Debug Hitbox]:', this.mostrarDebugHitbox ? 'ATIVADO' : 'DESATIVADO');
     }
 
     processarInput(input) {
@@ -2013,7 +2148,10 @@ class CombateMeleeScript {
 
         const sprite = this.entidade.obterComponente('SpriteComponent');
         if (sprite) {
+            console.log('   🎬 Tocando animação:', this.animAttack);
             sprite.play(this.animAttack);
+        } else {
+            console.warn('   ⚠️ SpriteComponent não encontrado!');
         }
     }
 
@@ -2026,6 +2164,12 @@ class CombateMeleeScript {
     }
 
     atualizar(deltaTime) {
+        // Força conversão do debug flag toda vez (caso o valor seja alterado no editor)
+        if (typeof this.mostrarDebugHitbox === 'string') {
+            const valor = this.mostrarDebugHitbox.toLowerCase().trim();
+            this.mostrarDebugHitbox = (valor === 'true' || valor === '1' || valor === 'yes' || valor === 'sim');
+        }
+        
         // Atualiza Cooldown global
         if (this.tempoCooldown > 0) {
             this.tempoCooldown -= deltaTime;
@@ -2037,6 +2181,7 @@ class CombateMeleeScript {
         
         // FORÇA attack se o movimento mudou para idle/walk
         if (sprite && sprite.animacaoAtual !== this.animAttack) {
+            console.log('   ⚠️ Animação foi sobrescrita para:', sprite.animacaoAtual, '- Forçando de volta para attack');
             sprite.play(this.animAttack);
         }
         
@@ -2160,16 +2305,22 @@ class CombateMeleeScript {
             const drawX = this.entidade.x + (this.entidade.largura / 2) + offX;
             const drawY = this.entidade.y + (this.entidade.altura / 2) + this.hitboxY - (this.hitboxH / 2);
 
-            // Debug Hitbox (Descomente para ver a área de colisão)
-            /*
-            ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
-            ctx.fillRect(drawX, drawY, this.hitboxW, this.hitboxH);
+            // Debug Hitbox (Ativado pela flag mostrarDebugHitbox)
+            // LOG: Mostra o tipo e valor da flag
+            if (!this._debugLogMostrado) {
+                console.log('🐛 [Renderizar] mostrarDebugHitbox =', this.mostrarDebugHitbox, '(tipo:', typeof this.mostrarDebugHitbox + ')');
+                this._debugLogMostrado = true;
+            }
             
-            // Borda
-            ctx.strokeStyle = 'red';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(drawX, drawY, this.hitboxW, this.hitboxH);
-            */
+            if (this.mostrarDebugHitbox) {
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+                ctx.fillRect(drawX, drawY, this.hitboxW, this.hitboxH);
+                
+                // Borda
+                ctx.strokeStyle = 'red';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(drawX, drawY, this.hitboxW, this.hitboxH);
+            }
         }
     }
 }`;
@@ -2499,13 +2650,16 @@ class CombateMeleeScript {
     }
 
     receberDano(quantidade) {
-        const reducao = Math.min(this.entidade.defesa * 0.01, 0.75);
+        // Garante que defesa existe (fallback para 0)
+        const defesaAtual = this.entidade.defesa || 0;
+        const reducao = Math.min(defesaAtual * 0.01, 0.75);
         const danoFinal = Math.floor(quantidade * (1 - reducao));
         
         this.entidade.hp -= danoFinal;
         if (this.entidade.hp < 0) this.entidade.hp = 0;
         
-        console.log(\`💥 Dano: -\${danoFinal} HP | HP Restante: \${this.entidade.hp}/\${this.entidade.hpMax}\`);
+        console.log(\`💥 Dano: \${quantidade} → \${danoFinal} (após defesa \${defesaAtual})\`);
+        console.log(\`   HP: \${this.entidade.hp}/\${this.entidade.hpMax}\`);
         
         return danoFinal;
     }

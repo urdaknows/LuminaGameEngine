@@ -257,8 +257,11 @@ export default class StatsRPG {
      * Causa dano ao personagem
      */
     receberDano(quantidade) {
+        // Garante que defesa existe (fallback para 0)
+        const defesaAtual = this.entidade.defesa || 0;
+
         // Aplica defesa (cada ponto de defesa reduz 1% do dano)
-        const reducao = Math.min(this.entidade.defesa * 0.01, 0.75); // Máximo 75% de redução
+        const reducao = Math.min(defesaAtual * 0.01, 0.75); // Máximo 75% de redução
         const danoFinal = Math.floor(quantidade * (1 - reducao));
 
         this.entidade.hp -= danoFinal;
@@ -266,7 +269,7 @@ export default class StatsRPG {
         if (this.entidade.hp < 0) this.entidade.hp = 0;
 
         if (this.mostrarLogs) {
-            console.log(`💥 Dano: ${quantidade} → ${danoFinal} (após defesa)`);
+            console.log(`💥 Dano: ${quantidade} → ${danoFinal} (após defesa ${defesaAtual})`);
             console.log(`   HP: ${this.entidade.hp}/${this.entidade.hpMax}`);
         }
 

@@ -1527,7 +1527,7 @@ class EditorPrincipal {
         btnAddSub.innerText = '+';
         btnAddSub.title = 'Criar Subpasta';
         btnAddSub.style.fontSize = '18px';
-        
+
         btnAddSub.style.color = '#4ecdc4';
         btnAddSub.onclick = (e) => {
             e.stopPropagation();
@@ -2414,7 +2414,9 @@ class EditorPrincipal {
             // Vou chamar uma função auxiliar para renderizar os campos do script.
             scriptHtml += this.renderizarCamposScript(script, key);
 
-            componentsHtml += createComponentHtml(key, script.nome || 'Script Custom', '📜', '#f1c40f', scriptHtml, true);
+            // FIX: Usar scriptName (nome da classe) em vez de nome (tipo do componente)
+            const displayName = script.scriptName || script.nome || 'Script Custom';
+            componentsHtml += createComponentHtml(key, displayName, '📜', '#f1c40f', scriptHtml, true);
         }
 
 

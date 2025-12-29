@@ -543,6 +543,12 @@ export class SpriteComponent {
             return !!this.assetId;
         }
 
+        // === EFEITO DE PISCAR (INVENCIBILIDADE) ===
+        // Se a entidade está piscando, aplicar transparência
+        if (this.entidade._piscando) {
+            ctx.globalAlpha = 0.3;
+        }
+
         // 4. Desenhar centralizado (offset relativo)
         // Usa offset da animação se disponível, senão usa offset global
         const offsetX = (anim && anim.offsetX !== undefined) ? anim.offsetX : this.offsetX;
