@@ -1023,11 +1023,11 @@
                 },
                 {
                     "tipo": "UIComponent",
-                    "renderMode": "world",
+                    "renderMode": "screen",
                     "usarPlayerGlobal": true,
                     "imagemSlot": null,
                     "imagemSlotCheio": null,
-                    "inventoryScale": 1,
+                    "inventoryScale": 3,
                     "inventoryCols": 5,
                     "inventoryRows": 4,
                     "borderTopLeft": null,
@@ -1041,8 +1041,8 @@
                     "elementos": [
                         {
                             "tipo": "inventario",
-                            "offsetX": 10,
-                            "offsetY": 10,
+                            "offsetX": 200,
+                            "offsetY": 150,
                             "largura": 200,
                             "altura": 20,
                             "corPreenchimento": "#ff0000",
@@ -1151,7 +1151,7 @@
             "id": "pasta_1767478261267_168",
             "nome": "Player",
             "parentId": null,
-            "aberta": false
+            "aberta": true
         },
         {
             "id": "pasta_1768075791505_616",
