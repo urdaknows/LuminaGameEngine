@@ -18,7 +18,8 @@ class GeradorScript {
             'Simulador de Morte': this.gerarScriptSimuladorMorte.bind(this),
             'Sistema de Respawn': this.gerarScriptRespawnInimigo.bind(this),
             'Texto Flutuante': this.gerarScriptTextoFlutuante.bind(this),
-            'Controlador de Inventário': this.gerarControladorInventario.bind(this)
+            'Controlador de Inventário': this.gerarControladorInventario.bind(this),
+            'Área de Mensagem': this.gerarScriptAreaMensagem.bind(this)
         };
     }
 
@@ -915,8 +916,8 @@ class InimigoPatrulhaScript {
         const wallSlideVel = info.parametros.velocidadeDeslizamento || 100;
 
         // Asymmetric Offsets (No auto-force, pure user control)
-        const offsetLeft = info.parametros.offsetVisualWallEsq || 0;
-        const offsetRight = info.parametros.offsetVisualWallDir || 0;
+        const offsetLeft = parseFloat(info.parametros.offsetVisualWallEsq) || 0;
+        const offsetRight = parseFloat(info.parametros.offsetVisualWallDir) || 0;
 
         let code = '// PLATFORMER SCRIPT v5.8.0 ATTACK-FIRST - Checks attack state before ANY input processing\n';
         code += 'class MovimentacaoPlataformaScript {\n';
@@ -931,8 +932,21 @@ class InimigoPatrulhaScript {
         code += '    this.offsetWallDir = ' + offsetRight + ';\n';
         code += '    this.paredeEsq = false;\n';
         code += '    this.paredeDir = false;\n';
+        // Fix: Capture default visual offset to restore it when not sliding
+        code += '    const sc = this.entidade.obterComponente("SpriteComponent");\n';
+        code += '    let def = sc ? sc.offsetX : 0;\n';
+        code += '    if (isNaN(def)) def = 0;\n';
+        code += '    this.defaultOffsetX = def;\n';
         code += '    this.entidade.temGravidade = true;\n';
         code += '    if (!this.entidade.gravidade) this.entidade.gravidade = 1200;\n';
+        code += '    \n';
+        code += '    // [Collision Dynamic Init]\n';
+        code += '    this._defH = 0; this._crouchH = 0; this._defOffY = 0; this._crouchOffY = 0;\n';
+        code += '    const col = this.entidade.obterComponente("CollisionComponent");\n';
+        code += '    if(col) {\n';
+        code += '        this._defH = col.altura; this._crouchH = col.altura * 0.5;\n';
+        code += '        this._defOffY = col.offsetY; this._crouchOffY = col.offsetY + (col.altura * 0.5);\n';
+        code += '    }\n';
         code += '  }\n';
         code += '  detectarParedes() {\n';
         code += '    this.paredeEsq = false; this.paredeDir = false;\n';
@@ -1006,7 +1020,7 @@ class InimigoPatrulhaScript {
         code += '    const attackScript = this.obterScriptPorNome("CombateMeleeScript");\n';
         code += '    const isAttacking = attackScript && attackScript.estaOcupado && attackScript.estaOcupado();\n';
         code += '    if (isAttacking) {\n';
-        code += '        this.entidade.velocidadeX = 0;\n';
+        code += '        // this.entidade.velocidadeX = 0; // Removed override to allow slide attacks\n';
         code += '        return; // Let attack/slide script handle everything\n';
         code += '    }\n';
         code += '    \n';
@@ -1051,55 +1065,80 @@ class InimigoPatrulhaScript {
         code += '    \n';
         code += '    // WALL SLIDE LOGIC\n';
         code += '    if (!noChao && this.entidade.velocidadeY > 0 && ((this.paredeEsq && pressEsq) || (this.paredeDir && pressDir))) {\n';
+        code += '       // [Collider Resize: Crouch Size for Slide]\n';
+        code += '       const colS = this.entidade.obterComponente("CollisionComponent");\n';
+        code += '       if(colS && this._defH > 0 && colS.altura !== this._crouchH) { colS.altura = this._crouchH; colS.offsetY = this._crouchOffY; }\n';
+        code += '       \n';
         code += '       if (this.entidade.velocidadeY > this.velocidadeWallSlide) this.entidade.velocidadeY = this.velocidadeWallSlide;\n';
         code += '       \n';
-        code += '       // Physical Snap: Force player against wall to prevent floating\n';
+        code += '       // Physical Snap\n';
         code += '       if (this.paredeEsq) this.entidade.velocidadeX = -10;\n';
         code += '       if (this.paredeDir) this.entidade.velocidadeX = 10;\n';
         code += '       \n';
-        code += '       // DEBUG: Ajuda a descobrir o nome da animacao\n';
-        code += '       // console.log("Anims Disponiveis:", Object.keys(anims));\n';
-        code += '       \n';
-        code += '       // Tenta varias keys comuns\n';
+        code += '       // Animation\n';
         code += '       if (hasAnim("wallslide")) spriteComp.play("wallslide");\n';
         code += '       else if (hasAnim("wall_slide")) spriteComp.play("wall_slide");\n';
         code += '       else if (hasAnim("slide")) spriteComp.play("slide");\n';
         code += '       else if (hasAnim("escalando")) spriteComp.play("escalando");\n';
-        code += '       else console.log("AVISO: Nenhuma animacao de wallslide encontrada (wallslide, wall_slide, slide, escalando). Disponiveis:", Object.keys(anims));\n';
         code += '       \n';
         code += '       if (spriteComp) {\n';
-        code += '           // Wall Cling Logic (Front-to-Wall): \n';
-        code += '           // Left Wall -> Face Left (True)\n';
-        code += '           // Right Wall -> Face Right (False)\n';
-        code += '           // Offset: Both apply POSITIVE shift relative to facing direction logic (handled by engine) \n';
-        code += '           if (this.paredeDir) { spriteComp.inverterX = false; spriteComp.offsetX = this.offsetWallDir; }\n';
-        code += '           if (this.paredeEsq) { spriteComp.inverterX = true; spriteComp.offsetX = this.offsetWallEsq; }\n';
+        code += '           // Capture default offset when initializing slide\n';
+        code += '           if (!this.isVisualSliding) {\n';
+        code += '               this.defaultOffsetX = spriteComp.offsetX || 0;\n';
+        code += '               this.isVisualSliding = true;\n';
+        code += '           }\n';
         code += '           \n';
-        code += '           // console.log("Offset Applied. L:", this.offsetWallEsq, "R:", this.offsetWallDir);\n';
+        code += '           // Wall Cling Logic\n';
+        code += '           \n';
+        code += '           if (this.paredeDir) { \n';
+        code += '               spriteComp.inverterX = false; \n';
+        code += '               spriteComp.offsetX = Number(this.defaultOffsetX) + Number(this.offsetWallDir); \n';
+        code += '           }\n';
+        code += '           if (this.paredeEsq) { \n';
+        code += '               spriteComp.inverterX = true; \n';
+        code += '               let rawVal = Number(this.defaultOffsetX) + Number(this.offsetWallEsq);\n';
+        code += '               if (isNaN(rawVal)) rawVal = 0;\n';
+        code += '               spriteComp.offsetX = Math.max(-100, Math.min(100, rawVal));\n';
+        code += '           }\n';
         code += '       }\n';
         code += '       \n';
         code += '       if (input.teclaPrecionadaAgora(" ") || input.teclaPrecionadaAgora("ArrowUp")) {\n';
         code += '         this.entidade.velocidadeY = -this.forcaPulo;\n';
         code += '         this.entidade.velocidadeX = this.paredeEsq ? velAtual : -velAtual;\n';
+        code += '         // Exit slide state immediately on jump\n';
+        code += '         if (spriteComp && this.isVisualSliding) {\n';
+        code += '             spriteComp.offsetX = this.defaultOffsetX;\n';
+        code += '             this.isVisualSliding = false;\n';
+        code += '         }\n';
         code += '         return;\n';
         code += '       }\n';
         code += '    } else {\n';
+        code += '       // Reset visual state if we were sliding\n';
+        code += '       if (spriteComp && this.isVisualSliding) {\n';
+        code += '           spriteComp.offsetX = this.defaultOffsetX;\n';
+        code += '           this.isVisualSliding = false;\n';
+        code += '       }\n';
+        code += '       \n';
         code += '       if (!noChao) {\n';
         code += '          const isJump = this.entidade.velocidadeY < 0;\n';
         code += '          if (isJump) playAnim("pulo", "jump");\n';
         code += '          else playAnim("caindo", "fall");\n';
-
         code += '       } else {\n';
         code += '          // Ground Logic\n';
+        code += '          // [Collider Resize: Ground]\n';
+        code += '          const colG = this.entidade.obterComponente("CollisionComponent");\n';
+        code += '          if (colG && this._defH > 0) {\n';
+        code += '              if (pressDown) {\n';
+        code += '                   if (colG.altura !== this._crouchH) { colG.altura = this._crouchH; colG.offsetY = this._crouchOffY; }\n';
+        code += '              } else {\n';
+        code += '                   if (colG.altura !== this._defH) { colG.altura = this._defH; colG.offsetY = this._defOffY; }\n';
+        code += '              }\n';
+        code += '          }\n';
+        code += '          \n';
         code += '          if (pressDown) {\n';
-        code += '             // Crouch or Crouch Walk\n';
         code += '             if (Math.abs(vx) > 10) {\n';
-        code += '                 // Try crouch walk, fallback to regular walk\n';
-        code += '                 if (hasAnim("crouch_walk") || hasAnim("andar_abaixado")) {\n';
-        code += '                     playAnim("crouch_walk", "andar_abaixado");\n';
-        code += '                 } else {\n';
-        code += '                     playAnim("andando", "walk");\n';
-        code += '                 }\n';
+        code += '                 if (hasAnim("crouch_walk") || hasAnim("andar_abaixado")) playAnim("crouch_walk", "andar_abaixado");\n';
+        code += '                 else playAnim("andando", "walk");\n';
         code += '             } else {\n';
         code += '                 playAnim("abaixar", "crouch");\n';
         code += '             }\n';
@@ -1108,12 +1147,13 @@ class InimigoPatrulhaScript {
         code += '            else playAnim("andando", "walk");\n';
         code += '          } else {\n';
         code += '            playAnim("parado", "idle");\n';
+        code += '            // console.log("[Script] Estado: PARADO. VX:", vx);\n';
         code += '          }\n';
         code += '       }\n';
         code += '       \n';
+        code += '       // Standard Flipping (Does not touch Offset)\n';
         code += '       if (vx < 0 && spriteComp) spriteComp.inverterX = true;\n';
         code += '       if (vx > 0 && spriteComp) spriteComp.inverterX = false;\n';
-        code += '       if (spriteComp) spriteComp.offsetX = 0; // Reset offset\n';
         code += '       \n';
         code += '       if ((input.teclaPrecionadaAgora(" ") || input.teclaPrecionadaAgora("ArrowUp")) && noChao) {\n';
         code += '          this.entidade.velocidadeY = -this.forcaPulo;\n';
@@ -1373,6 +1413,39 @@ class MovimentacaoPlataformaScript {
             this.estado = correndo ? 'correndo' : 'andando';
         } else {
             this.estado = 'parado';
+        }
+
+        // --- DINAMICA DE COLISOR (Crouch/Slide) ---
+        // Ajusta altura do colisor se estiver agachado ou deslizando
+        const col = this.entidade.obterComponente('CollisionComponent');
+        if (col) {
+            // Inicializa defaults se ainda não fez
+            if (this._defaultH === undefined) {
+                this._defaultH = col.altura;
+                this._defaultOffY = col.offsetY;
+                this._crouchH = col.altura * 0.5; // Metade da altura
+                this._crouchOffY = col.offsetY + (col.altura * 0.5); // Baixa o offset para manter no chão
+            }
+
+            const isCrouchState = (this.estado === 'agachado' || this.estado === 'crouchWalk' || this.estado === 'slide');
+            
+            if (isCrouchState) {
+                // Debug State
+                // if (Math.random() < 0.01) console.log('DEBUG CROUCH: Estado:', this.estado, 'Altura:', col.altura, 'Target:', this._crouchH);
+
+                if (col.altura !== this._crouchH) {
+                    console.log('📉 Crouch Collider Ativado! Old:', col.altura, 'New:', this._crouchH);
+                    col.altura = this._crouchH;
+                    col.offsetY = this._crouchOffY;
+                }
+            } else {
+                // Tenta levantar (Verifica teto seria ideal, mas por enquanto direto)
+                if (col.altura !== this._defaultH) {
+                    console.log('📈 Stand Collider Restaurado! Old:', col.altura, 'New:', this._defaultH);
+                    col.altura = this._defaultH;
+                    col.offsetY = this._defaultOffY;
+                }
+            }
         }
     }
 
@@ -1731,14 +1804,14 @@ class MovimentacaoPlataformaScript {
                     this.direcaoParede = -1;
                     this.contatoParedeReal = true;
                     shouldSlide = true;
-                    this.entidade.x += 0.1; // Lateral Push Constante
+                    // Removed lateral push
                 }
                 // Slide Direita
                 else if (this.paredeDir && inputDireita) {
                     this.direcaoParede = 1;
                     this.contatoParedeReal = true;
                     shouldSlide = true;
-                    this.entidade.x -= 0.1; // Lateral Push Constante
+                    // Removed lateral push
                 }
             }
 
@@ -2156,15 +2229,19 @@ class InteractionScript {
 
         let textPlugin = null;
 
+        console.log('[InteractionScript] Procurando FloatingTextScript... Scripts encontrados:', scripts.length);
         for (const s of scripts) {
+            console.log('[InteractionScript] Verificando script:', s.scriptClassName, 'tem spawn?', s.instance && !!s.instance.spawn);
             if (s.instance && s.instance.spawn) {
                 textPlugin = s.instance;
+                console.log('[InteractionScript] FloatingTextScript encontrado!');
                 break;
             }
         }
 
         if (textPlugin) {
             // Efeito visual
+            console.log('[InteractionScript] Chamando spawn com:', this.mensagem, this.cor);
             textPlugin.spawn(this.mensagem, this.cor, 0, -50);
             this.cooldown = this.tempoExibicao;
             this.jaExecutou = true;
@@ -2297,6 +2374,11 @@ class DeathScreenScript {
         this.entidade = entidade;
         this.fadeDuration = 0.5;
 
+        // --- Customização (Editável no Inspetor) ---
+        this.titulo = 'VOCÊ MORREU';
+        this.textoCheckpoint = '🔄 Último Checkpoint';
+        this.textoReiniciar = '🏠 Reiniciar Fase';
+
         this.dialog = null;
         this.opacity = 0;
         this.state = 'idle';
@@ -2369,7 +2451,7 @@ class DeathScreenScript {
 
         // Título
         let titulo = document.createElement('h1');
-        titulo.innerText = 'VOCÊ MORREU';
+        titulo.innerText = this.titulo || 'VOCÊ MORREU';
         titulo.style.color = '#ff3333';
         titulo.style.fontFamily = 'Impact, sans-serif';
         titulo.style.fontSize = 'clamp(40px, 10vw, 100px)';
@@ -2386,12 +2468,16 @@ class DeathScreenScript {
         btnContainer.style.justifyContent = 'center';
 
         // Botão Respawn (Último Checkpoint da KillZone)
-        let btnRespawn = this._criarBotao('🔄 Último Checkpoint', () => {
-            this._finalizar(true);
-        });
+        // SÓ MOSTRA SE TIVER CHECKPOINT SALVO NA ENTIDADE
+        if (this.entidade.checkpoint) {
+            let btnRespawn = this._criarBotao(this.textoCheckpoint || '🔄 Último Checkpoint', () => {
+                this._finalizar(true);
+            });
+            btnContainer.appendChild(btnRespawn);
+        }
 
         // Botão Reiniciar Fase (Teleporte para Início)
-        let btnRestart = this._criarBotao('🏠 Reiniciar Fase', () => {
+        let btnRestart = this._criarBotao(this.textoReiniciar || '🏠 Reiniciar Fase', () => {
             // Teleporta para o início salvo no construtor
             if (this.entidade) {
                 this.entidade.x = this.startX;
@@ -2402,7 +2488,6 @@ class DeathScreenScript {
             this._finalizar(false);
         });
 
-        btnContainer.appendChild(btnRespawn);
         btnContainer.appendChild(btnRestart);
         dialog.appendChild(btnContainer);
 
@@ -2577,7 +2662,7 @@ class CombateMeleeScript {
 
         // === DEBUG ===
         // @type boolean
-        this.mostrarDebugHitbox = true;
+        this.mostrarDebugHitbox = false;
 
         // Controle
         this.inimigosAtingidos = new Set();
@@ -2632,6 +2717,7 @@ class CombateMeleeScript {
         this.tempoDecorrido = 0;
         this.tempoCooldown = this.cooldownAtaque;
         this.inimigosAtingidos.clear();
+        this.entidade.velocidadeX = 0; // Para o movimento no ataque normal
         console.log('⚔️ Ataque Iniciado!');
         const sprite = this.entidade.obterComponente('SpriteComponent');
         if (sprite) {
@@ -2649,22 +2735,20 @@ class CombateMeleeScript {
         this.slideDirection = (sprite && sprite.inverterX) ? -1 : 1;
         console.log('🏃 Slide Attack! Dir:', this.slideDirection > 0 ? 'DIREITA' : 'ESQUERDA');
         
-        // CRITICAL FIX: Ensure slide animation image is preloaded
+        
         if (sprite) {
-            const slideAnim = sprite.animacoes[this.animSlide];
-            if (slideAnim && slideAnim.source) {
-                // Ensure imageCache exists
-                if (!sprite.imageCache) sprite.imageCache = {};
-                
-                // Preload image if not in cache
-                if (!sprite.imageCache[slideAnim.source]) {
-                    const img = new Image();
-                    img.src = slideAnim.source;
-                    sprite.imageCache[slideAnim.source] = img;
-                    slideAnim._runtimeImage = img;
+            // Verifica se a animação existe
+            if (!sprite.animacoes || !sprite.animacoes[this.animSlide]) {
+                console.warn('⚠️ [Combate] Animação ' + this.animSlide + ' não encontrada! Tentando crouch...');
+                if (sprite.animacoes && sprite.animacoes['crouch']) {
+                    sprite.play('crouch');
+                    return;
                 }
             }
+            
+            // Toca normal
             sprite.play(this.animSlide);
+            console.log('   🎬 Slide playing:', this.animSlide);
         }
     }
 
@@ -3349,6 +3433,190 @@ class InventoryController {
         }
         
         console.log('[Inventory] Estado:', this.aberto ? 'ABERTO' : 'FECHADO');
+    }
+}
+`;
+    }
+
+    /**
+     * Gera script para Área de Mensagem (Tutorial/Avisos)
+     * Exibe uma mensagem rica no centro da tela ao encostar.
+     */
+    gerarScriptAreaMensagem() {
+        return `/**
+ * Script de Área de Mensagem v1.0
+ * Exibe mensagens ricas (HTML) ao colidir com o Player.
+ * Suporta tags de cor: <red>, <yellow>, <blue>, <green>, <gold>, <purple>
+ */
+class AreaMensagemScript {
+    constructor(entidade) {
+        this.entidade = entidade;
+
+        // --- Configurações Editáveis ---
+        this.mensagem = 'Use <yellow>A</yellow> / <yellow>D</yellow> ou <yellow>SETAS</yellow> para andar';
+        this.executarUmaVez = true; // Checkbox no editor
+        this.posX = '50%';
+        this.posY = '15%';
+        this.tempoFade = 0.5;
+        this.corFundo = 'rgba(0, 0, 0, 0.9)';
+        this.corBorda = 'white';
+        
+        // Estado Interno
+        this.jaMostrou = false;
+        this.elementoMsg = null;
+        this.ativo = false;
+        this.playerNoTrigger = false;
+    }
+
+    atualizar(dt) {
+        // STRICT MODE: Só executa se o engine existir E estiver em modo SIMULADO (Play).
+        // Isso impede que roda no Editor (que é !simulado ou undefined).
+        if (!this.entidade.engine || this.entidade.engine.simulado !== true) return;
+
+        // Encontrar Player (Cache simples)
+        if (!this.player) {
+            if (this.entidade.engine) {
+                this.player = this.entidade.engine.entidades.find(e => e.nome === 'Player' || e.tipo === 'player');
+            }
+        }
+
+        if (this.player) {
+            if (this.verificarColisao(this.player)) {
+                if (!this.playerNoTrigger) {
+                    this.onTriggerEnter();
+                    this.playerNoTrigger = true;
+                }
+            } else {
+                if (this.playerNoTrigger) {
+                    this.onTriggerExit();
+                    this.playerNoTrigger = false;
+                }
+            }
+        }
+    }
+
+    verificarColisao(player) {
+        // AABB Simples
+        return (
+            this.entidade.x < player.x + player.largura &&
+            this.entidade.x + this.entidade.largura > player.x &&
+            this.entidade.y < player.y + player.altura &&
+            this.entidade.y + this.entidade.altura > player.y
+        );
+    }
+
+    onTriggerEnter() {
+        if (this.executarUmaVez && this.jaMostrou) return;
+
+        if (this.executarUmaVez && this.jaMostrou) return;
+
+        this.mostrarMensagem();
+        this.jaMostrou = true;
+    }
+
+    onTriggerExit() {
+        // Descomente se quiser esconder ao sair:
+        // this.esconderMensagem();
+        
+        // Mas o usuário pediu "mostrar uma msg", geralmente fica um tempo ou até fechar.
+        // Pela imagem parece um Toast. Vamos fazer fade out após sair?
+        // Ou vamos manter até ele sair da área?
+        // O padrão "Tutorial" geralmente some ao sair da área.
+        this.esconderMensagem();
+    }
+
+    mostrarMensagem() {
+        if (this.ativo) return;
+        
+        if (this.ativo) return;
+        
+        // Cria elemento HTML
+        this.elementoMsg = document.createElement('div');
+        
+        // Estilização Base (Caixa Preta com Borda Arredondada)
+        Object.assign(this.elementoMsg.style, {
+            position: 'absolute',
+            top: this.posY, // Posição Y configurável
+            left: this.posX, // Posição X configurável
+            transform: 'translate(-50%, -50%)',
+            backgroundColor: this.corFundo,
+            border: '3px solid ' + this.corBorda,
+            borderRadius: '15px',
+            padding: '20px 40px',
+            fontFamily: '"Press Start 2P", monospace, sans-serif', // Fonte pixelada se tiver carregada
+            fontSize: '20px',
+            color: 'white', // Cor padrão
+            zIndex: '99999',
+            textAlign: 'center',
+            opacity: '0',
+            transition: 'opacity ' + this.tempoFade + 's',
+            pointerEvents: 'none', // Não bloqueia cliques
+            boxShadow: '0 0 20px rgba(0,0,0,0.5)',
+            whiteSpace: 'nowrap'
+        });
+
+        // Parser de Rich Text
+        this.elementoMsg.innerHTML = this.parseMensagem(this.mensagem);
+
+        // Anexar ao container do jogo (Compatível com Fullscreen)
+        // Se estivermos em Fullscreen, precisamos anexar ao elemento pai do canvas.
+        let target = document.body;
+        if (this.entidade.engine && this.entidade.engine.canvas && this.entidade.engine.canvas.parentElement) {
+            target = this.entidade.engine.canvas.parentElement;
+        } else {
+            target = document.getElementById('game-container') || document.body;
+        }
+        
+        target.appendChild(this.elementoMsg);
+
+        // Fade In (timeout para ativar transição CSS)
+        requestAnimationFrame(() => {
+            this.elementoMsg.style.opacity = '1';
+        });
+
+        this.ativo = true;
+    }
+
+    esconderMensagem() {
+        if (!this.elementoMsg) return;
+        
+        const el = this.elementoMsg;
+        el.style.opacity = '0';
+        this.ativo = false;
+        
+        setTimeout(() => {
+            if (el && el.parentNode) {
+                el.parentNode.removeChild(el);
+            }
+        }, this.tempoFade * 1000);
+        
+        this.elementoMsg = null;
+    }
+
+    onDestroy() {
+        // Limpeza garantida ao remover componente ou parar jogo
+        if (this.elementoMsg && this.elementoMsg.parentNode) {
+            this.elementoMsg.parentNode.removeChild(this.elementoMsg);
+        }
+        this.elementoMsg = null;
+        this.ativo = false;
+    }
+
+    parseMensagem(texto) {
+        // Substitui tags personalizadas por spans coloridos
+        // <red>Texto</red> -> <span style="color: #ff5555">Texto</span>
+        
+        let html = texto
+            .replace(/<red>(.*?)<\\/red>/gi, '<span style="color: #ff5555">$1</span>')
+            .replace(/<blue>(.*?)<\\/blue>/gi, '<span style="color: #5555ff">$1</span>')
+            .replace(/<green>(.*?)<\\/green>/gi, '<span style="color: #55ff55">$1</span>')
+            .replace(/<yellow>(.*?)<\\/yellow>/gi, '<span style="color: #ffff55">$1</span>')
+            .replace(/<gold>(.*?)<\\/gold>/gi, '<span style="color: #ffaa00">$1</span>')
+            .replace(/<purple>(.*?)<\\/purple>/gi, '<span style="color: #ff55ff">$1</span>')
+             // Adicione mais cores conforme necessidade
+            .replace(/<([a-z]+)>(.*?)<\\/\\1>/gi, '<span style="color: $1">$2</span>'); // Fallback genérico (ex: <orange>)
+
+        return html;
     }
 }
 `;

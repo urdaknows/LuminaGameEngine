@@ -10,6 +10,11 @@ class LoopJogo {
         this.intervaloFrame = 1000 / this.fps;
         this.rodando = false;
         this.animationFrameId = null;
+
+        // FPS Calc
+        this.currentFps = 0;
+        this.framesThisSecond = 0;
+        this.lastFpsUpdate = 0;
     }
 
     /**
@@ -17,7 +22,7 @@ class LoopJogo {
      */
     iniciar() {
         if (this.rodando) return;
-        
+
         this.rodando = true;
         this.tempoAnterior = performance.now();
         this.loop(this.tempoAnterior);
@@ -43,6 +48,14 @@ class LoopJogo {
         // Calcula deltaTime em segundos
         const deltaTime = (tempoAtual - this.tempoAnterior) / 1000;
         this.tempoAnterior = tempoAtual;
+
+        // FPS Update
+        if (tempoAtual - this.lastFpsUpdate >= 1000) {
+            this.currentFps = this.framesThisSecond;
+            this.framesThisSecond = 0;
+            this.lastFpsUpdate = tempoAtual;
+        }
+        this.framesThisSecond++;
 
         // Atualiza a engine
         this.engine.atualizar(deltaTime);

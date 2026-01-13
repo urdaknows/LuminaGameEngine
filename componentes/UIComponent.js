@@ -192,7 +192,7 @@ export default class UIComponent {
 
         // Tenta obter o asset do gerenciador
         // renderizador -> engine -> assetManager
-        const assetManager = renderizador.engine ? renderizador.engine.assetManager : null;
+        const assetManager = (renderizador.engine && renderizador.engine.assetManager) ? renderizador.engine.assetManager : renderizador.assetManager;
         if (assetManager) {
             const img = assetManager.obterImagem(el.assetId);
             if (img) {
@@ -274,7 +274,7 @@ export default class UIComponent {
         const spacing = baseSpacing * scale;
         const padding = spacing; // Padding interno da borda
 
-        const assetManager = renderizador.engine ? renderizador.engine.assetManager : null;
+        const assetManager = (renderizador.engine && renderizador.engine.assetManager) ? renderizador.engine.assetManager : renderizador.assetManager;
 
         // 1. Desenhar Moldura (9-Slice)
         const contentW = (cols * slotSize) + ((cols - 1) * spacing);
@@ -323,7 +323,6 @@ export default class UIComponent {
             const slotY = y + (row * (slotSize + spacing));
 
             // Fundo do Slot (Imagem ou Retângulo)
-            const assetManager = renderizador.engine ? renderizador.engine.assetManager : null;
             let desenhouImagem = false;
 
             // 1. Imagem Base (Slot Vazio)
@@ -380,6 +379,9 @@ export default class UIComponent {
 
                 // 1. Tentar desenhar Ícone Customizado ou pelo ID
                 const iconToUse = item.icon || item.id;
+
+                // DEBUG INVENTORY ICON
+
 
                 if (iconToUse) {
                     const imgIcon = this._getImgHelper(assetManager, iconToUse);

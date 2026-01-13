@@ -82,10 +82,37 @@ class CollisionComponent {
         // Resetar estado de chão
         entidade.noChao = false;
 
+        // Resetar flags de colisão lateral
+        entidade.colidiuParede = false;
+        entidade.colidiuEsquerda = false;
+        entidade.colidiuDireita = false;
+
+        // RESET INTELIGENTE de limites de parede:
+        // Só limpa se o player está se AFASTANDO da parede
+        // _wallRightLimit é MAX X (Parede na direita). Limpa se move para ESQUERDA.
+        if (entidade._wallRightLimit !== undefined && entidade.velocidadeX < -10) {
+            entidade._wallRightLimit = undefined;
+        }
+        // _wallLeftLimit é MIN X (Parede na esquerda). Limpa se move para DIREITA.
+        if (entidade._wallLeftLimit !== undefined && entidade.velocidadeX > 10) {
+            entidade._wallLeftLimit = undefined;
+        }
+
         // Se o player pulou (velocidade Y negativa), desgrudar do chão
         if (entidade.velocidadeY < -50) { // Threshold para detectar pulo
             entidade._grounded = false;
         }
+
+        // Acumular correções de TODOS os tilemaps antes de aplicar
+        let maxCorrectionTop = 0;
+        let maxCorrectionBottom = 0;
+        let maxCorrectionLeft = 0;
+        let maxCorrectionRight = 0;
+        let shouldApplyTop = false;
+        let shouldApplyBottom = false;
+        let shouldApplyLeft = false;
+        let shouldApplyRight = false;
+        let potentialGround = false;
 
         for (const tilemapEnt of tilemapEnts) {
             const tilemap = tilemapEnt.obterComponente('TilemapComponent');
@@ -109,16 +136,7 @@ class CollisionComponent {
             const startRow = Math.floor(relY / tileSize);
             const endRow = Math.floor((relY + bounds.h) / tileSize);
 
-            // Acumular correções necessárias (FIX: Evita aplicar múltiplas vezes)
-            let maxCorrectionTop = 0;
-            let maxCorrectionBottom = 0;
-            let maxCorrectionLeft = 0;
-            let maxCorrectionRight = 0;
-            let shouldApplyTop = false;
-            let shouldApplyBottom = false;
-            let shouldApplyLeft = false;
-            let shouldApplyRight = false;
-            let potentialGround = false;
+            // Variáveis movidas para fora do loop para acumular correções entre camadas
 
             // Verificar tiles na área da entidade
             for (let r = startRow; r <= endRow; r++) {
@@ -236,45 +254,56 @@ class CollisionComponent {
                 }
             }
 
-            // Aplicar correções UMA VEZ (evita acumulação)
-            if (shouldApplyTop && !isNaN(maxCorrectionTop)) {
-                // console.log('🔴 CORREÇÃO TOPO:', maxCorrectionTop.toFixed(2), 'px | Player Y:', entidade.y.toFixed(1));
-                entidade.y -= maxCorrectionTop;
-                entidade.velocidadeY = 0;
-                entidade.noChao = true;
+        } // Fim do Loop de Tilemaps
 
-                // FIX DEFINITIVO: Marcar a posição Y "grudada" para evitar flutuação
-                // Nos próximos frames, se o overlap for micro (<2px) e estiver grudado, não corrige
-                entidade._groundY = entidade.y;
-                entidade._grounded = true;
+        // Aplicar correções UMA VEZ (evita acumulação)
+        if (shouldApplyTop && !isNaN(maxCorrectionTop)) {
+            // console.log('🔴 CORREÇÃO TOPO:', maxCorrectionTop.toFixed(2), 'px | Player Y:', entidade.y.toFixed(1));
+            entidade.y -= maxCorrectionTop;
+            entidade.velocidadeY = 0;
+            entidade.noChao = true;
 
-            } else if (entidade._grounded && maxCorrectionTop < 2.0 && potentialGround) {
-                // FIXED: Só aplica Sticky Ground se HOUVER potencialGround (tile sólido abaixo).
-                // Evita flutuar ao sair de um cliff (onde potentialGround = false).
-                // console.log('⚠️ IGNORADO (grudado):', maxCorrectionTop.toFixed(2), 'px');
-                entidade.y = entidade._groundY; // Força posição exata
-                entidade.velocidadeY = 0;
-                entidade.noChao = true;
+            // FIX DEFINITIVO: Marcar a posição Y "grudada" para evitar flutuação
+            // Nos próximos frames, se o overlap for micro (<2px) e estiver grudado, não corrige
+            entidade._groundY = entidade.y;
+            entidade._grounded = true;
 
-            } else {
-                // Perdeu contato com o chão e não há chão potencial (Cliff) -> Cai
-                entidade._grounded = false;
-            }
-            if (shouldApplyBottom && !isNaN(maxCorrectionBottom)) {
-                console.log('🔵 CORREÇÃO TETO:', maxCorrectionBottom.toFixed(2), 'px');
-                entidade.y += maxCorrectionBottom;
-                entidade.velocidadeY = 0;
-            }
-            if (shouldApplyLeft && !isNaN(maxCorrectionLeft)) {
-                console.log('⬅️ CORREÇÃO ESQUERDA:', maxCorrectionLeft.toFixed(2), 'px');
-                entidade.x -= maxCorrectionLeft;
-                entidade.velocidadeX = 0;
-            }
-            if (shouldApplyRight && !isNaN(maxCorrectionRight)) {
-                console.log('➡️ CORREÇÃO DIREITA:', maxCorrectionRight.toFixed(2), 'px');
-                entidade.x += maxCorrectionRight;
-                entidade.velocidadeX = 0;
-            }
+        } else if (entidade._grounded && maxCorrectionTop < 2.0 && potentialGround) {
+            // FIXED: Só aplica Sticky Ground se HOUVER potencialGround (tile sólido abaixo).
+            // Evita flutuar ao sair de um cliff (onde potentialGround = false).
+            // console.log('⚠️ IGNORADO (grudado):', maxCorrectionTop.toFixed(2), 'px');
+            entidade.y = entidade._groundY; // Força posição exata
+            entidade.velocidadeY = 0;
+            entidade.noChao = true;
+
+        } else {
+            // Perdeu contato com o chão e não há chão potencial (Cliff) -> Cai
+            entidade._grounded = false;
+        }
+        if (shouldApplyBottom && !isNaN(maxCorrectionBottom)) {
+            // console.log('🔵 CORREÇÃO TETO:', maxCorrectionBottom.toFixed(2), 'px');
+            entidade.y += maxCorrectionBottom;
+            entidade.velocidadeY = 0;
+        }
+        if (shouldApplyLeft && !isNaN(maxCorrectionLeft)) {
+            entidade.x -= maxCorrectionLeft; // Empurra para ESQUERDA
+            entidade._wallRightLimit = entidade.x;
+            entidade.velocidadeX = 0;
+            entidade.colidiuParede = true;
+            entidade.colidiuEsquerda = true;
+        }
+        if (shouldApplyRight && !isNaN(maxCorrectionRight)) {
+            entidade.x += maxCorrectionRight; // Empurra para DIREITA
+            entidade._wallLeftLimit = entidade.x;
+            entidade.velocidadeX = 0;
+            entidade.colidiuParede = true;
+            entidade.colidiuDireita = true;
+        }
+
+        // [FIX GHOST WALL] Se não colidiu, limpa limites antigos
+        if (!entidade.colidiuParede) {
+            entidade._wallRightLimit = undefined;
+            entidade._wallLeftLimit = undefined;
         }
     }
 
@@ -460,7 +489,7 @@ class CollisionComponent {
 
         // Apenas o Player verifica inimigos ativamente
         // Aceita "Player", "Novo Player", "Player 2", etc.
-        const nomeLower = (entidade.nome || '').toLowerCase();
+        const nomeLower = String(entidade.nome || '').toLowerCase();
         const isPlayer = nomeLower.includes('player') || entidade.tipo === 'player';
 
         if (!isPlayer) return;
@@ -476,7 +505,7 @@ class CollisionComponent {
         const inimigos = entidade.engine.entidades.filter(e => {
             if (e === entidade || e.ativo === false) return false;
 
-            const nomeStr = (e.nome || '').toLowerCase();
+            const nomeStr = String(e.nome || '').toLowerCase();
             return nomeStr.includes('inimigo') ||
                 nomeStr.includes('enemy') ||
                 nomeStr.includes('boss') ||
@@ -555,7 +584,8 @@ class CollisionComponent {
         // Cor: Verde (Sólido) ou Amarelo (Trigger)
         if (this.isTrigger) {
             ctx.strokeStyle = '#ffd93d'; // Amarelo
-            ctx.fillStyle = 'rgba(255, 217, 61, 0.2)';
+            // Reduzida opacidade para não atrapalhar no editor
+            ctx.fillStyle = 'rgba(255, 217, 61, 0.05)';
         } else {
             ctx.strokeStyle = '#00ff00'; // Verde
             ctx.fillStyle = 'rgba(0, 255, 0, 0.2)';

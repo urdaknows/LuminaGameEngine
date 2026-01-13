@@ -35,8 +35,10 @@ class Entidade {
 
         // Editor
         this.selecionado = false;
+        this.selecionado = false;
         this.cor = '#ff00ff'; // Cor padrão
         this.opacidade = 1.0; // Opacidade (0 a 1)
+        this.visivel = true; // Visibilidade (Render)
     }
 
     adicionarComponente(arg1, arg2) {
@@ -115,9 +117,7 @@ class Entidade {
             this.velocidadeY += this.gravidade * deltaTime;
         }
 
-        // Aplicar velocidade
-        this.x += this.velocidadeX * deltaTime;
-        this.y += this.velocidadeY * deltaTime;
+        // (Velocidade será aplicada DEPOIS da colisão)
 
         // Proteção NaN Física (Silenciosa)
         if (isNaN(this.y)) {
@@ -127,8 +127,23 @@ class Entidade {
             this.velocidadeX = 0;
         }
 
-        // Atualizar componentes
+        // 🚫 CRITICAL: Se há colisão de parede ativa, ZERAR velocidade nessa direção
+        // ANTES dos scripts rodarem! Isso impede que scripts apliquem velocidade na direção da parede.
+        if (this.colidiuEsquerda && this.velocidadeX > 0) {
+            console.log('⛔ PRE-SCRIPT: Zerando velocidadeX (parede esquerda ativa)');
+            this.velocidadeX = 0;
+        }
+        if (this.colidiuDireita && this.velocidadeX < 0) {
+            console.log('⛔ PRE-SCRIPT: Zerando velocidadeX (parede direita ativa)');
+            this.velocidadeX = 0;
+        }
+
+        // Atualizar componentes (EXCETO CollisionComponent)
+        const collisionComp = this.obterComponente('CollisionComponent');
+
         for (const componente of this.componentes.values()) {
+            if (componente === collisionComp) continue; // Pula colisão por enquanto
+
             if (componente.atualizar) {
                 try {
                     componente.atualizar(this, deltaTime);
@@ -147,6 +162,58 @@ class Entidade {
             }
         }
 
+        // AGORA roda CollisionComponent (antes de aplicar física!)
+        // Salvar flags do frame anterior (antes que CollisionComponent resete)
+        const hadWallLeft = this.colidiuEsquerda === true;
+        const hadWallRight = this.colidiuDireita === true;
+
+        const vxAntes = this.velocidadeX;
+        if (collisionComp && collisionComp.atualizar) {
+            try {
+                collisionComp.atualizar(this, deltaTime);
+            } catch (err) {
+                console.error('Erro CollisionComponent:', err);
+            }
+        }
+        if (Math.abs(vxAntes) > 0 && this.velocidadeX === 0) {
+            // Velocidade zerada pela colisão
+        }
+
+        // APLICAR VELOCIDADE POR ÚLTIMO (respeitando colisões laterais)
+        let vxFinal = this.velocidadeX;
+
+        // CRÍTICO: Bloquear movimento na direção da parede
+        // colidiuEsquerda = bateu no LADO ESQUERDO indo para DIREITA (vx > 0)
+        // colidiuDireita = bateu no LADO DIREITO indo para ESQUERDA (vx < 0)
+        if (this.colidiuEsquerda && vxAntes > 0) {
+            vxFinal = 0;
+        }
+        if (this.colidiuDireita && vxAntes < 0) {
+            vxFinal = 0;
+        }
+
+        // 1. Calcula próxima posição (provisória)
+        let nextX = this.x + vxFinal * deltaTime;
+
+        // 2. 🔒 CLAMP: Aplica limites na PROXIMA posição, antes de atualizar
+        // CORREÇÃO FINAL: Lógica Padrão (Right=Max, Left=Min)
+        if (this._wallRightLimit !== undefined) {
+            // Limite Direito (Parede na Direita) = MÁXIMO X
+            if (nextX > this._wallRightLimit) {
+                nextX = this._wallRightLimit;
+            }
+        }
+        if (this._wallLeftLimit !== undefined) {
+            // Limite Esquerdo (Parede na Esquerda) = MÍNIMO X
+            if (nextX < this._wallLeftLimit) {
+                nextX = this._wallLeftLimit;
+            }
+        }
+
+        // 3. Atualiza posição final validada
+        this.x = nextX;
+        this.y += this.velocidadeY * deltaTime;
+
         // Limite simples de chão (fallback) - 2000px
         const limiteChao = 2000;
         const bounds = this.obterLimites();
@@ -162,10 +229,21 @@ class Entidade {
     renderizar(renderizador, modoEdicao = false) {
         let desenhou = false;
 
+        // Verificação de Visibilidade
+        let alphaFinal = this.opacidade !== undefined ? this.opacidade : 1.0;
+
+        if (!this.visivel) {
+            // Se estiver em modo edição OU debug, mostra fantasma (semi-transparente)
+            const isDebug = renderizador && renderizador.debugMode;
+            if (!modoEdicao && !isDebug) return;
+
+            alphaFinal *= 0.5; // Indica visualmente que está oculto
+        }
+
         // Aplicar Opacidade Global
         const ctx = renderizador.ctx;
         ctx.save();
-        if (this.opacidade !== undefined) ctx.globalAlpha = this.opacidade;
+        ctx.globalAlpha = alphaFinal;
 
         // Renderiza cada componente visual
         for (const componente of this.componentes.values()) {
@@ -177,6 +255,8 @@ class Entidade {
         ctx.restore();
 
         // Fallback: Se nenhum componente desenhou nada (e.g. sem sprite), desenha um retângulo
+        // Fallback: Se nenhum componente desenhou nada (e.g. sem sprite), desenha um retângulo
+        // Se estiver invisível (mas no editor), desenha também.
         if (!desenhou) {
             const ctx = renderizador.ctx;
             ctx.save();
@@ -300,6 +380,7 @@ class Entidade {
             pastaId: this.pastaId,
             cor: this.cor,
             opacidade: this.opacidade,
+            visivel: this.visivel,
             tags: this.tags,
             componentes: componentesSerializados
         };
@@ -327,6 +408,8 @@ class Entidade {
         entidade.pastaId = dados.pastaId;
         entidade.cor = dados.cor || '#ff00ff';
         entidade.opacidade = dados.opacidade !== undefined ? Number(dados.opacidade) : 1.0;
+        // Strict boolean conversion to handle string "false" correctly
+        entidade.visivel = dados.visivel === false || dados.visivel === 'false' ? false : true;
         entidade.tags = dados.tags || [];
 
         // Spawn point

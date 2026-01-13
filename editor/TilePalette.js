@@ -18,10 +18,12 @@ export class TilePalette {
             const container = this.infoSpan ? this.infoSpan.parentElement : null;
             if (container) {
                 const label = document.createElement('label');
-                label.style.marginLeft = '10px';
+                label.style.display = 'block';
+                label.style.marginBottom = '6px';
                 label.style.fontSize = '12px';
                 label.style.color = '#ccc';
-                label.innerHTML = '<input type="checkbox" id="chk-tile-solid"> Sólido';
+                label.style.cursor = 'pointer';
+                label.innerHTML = '<input type="checkbox" id="chk-tile-solid" style="margin-right:5px;"> Sólido';
                 container.appendChild(label);
                 this.checkSolid = label.querySelector('input');
             }
@@ -33,11 +35,13 @@ export class TilePalette {
             const container = this.infoSpan ? this.infoSpan.parentElement : null;
             if (container) {
                 const label = document.createElement('label');
-                label.style.marginLeft = '10px';
+                label.style.display = 'block';
+                label.style.marginBottom = '6px';
                 label.style.fontSize = '12px';
                 label.style.color = '#ccc';
+                label.style.cursor = 'pointer';
                 label.title = 'Permite pular de baixo para cima';
-                label.innerHTML = '<input type="checkbox" id="chk-tile-plataforma"> Plataforma';
+                label.innerHTML = '<input type="checkbox" id="chk-tile-plataforma" style="margin-right:5px;"> Plataforma';
                 container.appendChild(label);
                 this.checkPlat = label.querySelector('input');
             }
@@ -49,11 +53,13 @@ export class TilePalette {
             const container = this.infoSpan ? this.infoSpan.parentElement : null;
             if (container) {
                 const label = document.createElement('label');
-                label.style.marginLeft = '10px';
+                label.style.display = 'block';
+                label.style.marginBottom = '6px';
                 label.style.fontSize = '12px';
                 label.style.color = '#ff7675'; // Vermelho claro
+                label.style.cursor = 'pointer';
                 label.title = 'Permite Wall Slide/Wall Jump';
-                label.innerHTML = '<input type="checkbox" id="chk-tile-isWall"> Slide';
+                label.innerHTML = '<input type="checkbox" id="chk-tile-isWall" style="margin-right:5px;"> Parede';
                 container.appendChild(label);
                 this.checkWall = label.querySelector('input');
             }
@@ -65,13 +71,33 @@ export class TilePalette {
             const container = this.infoSpan ? this.infoSpan.parentElement : null;
             if (container) {
                 const label = document.createElement('label');
-                label.style.marginLeft = '10px';
+                label.style.display = 'block';
+                label.style.marginBottom = '6px';
                 label.style.fontSize = '12px';
                 label.style.color = '#55efc4'; // Verde claro
+                label.style.cursor = 'pointer';
                 label.title = 'Chão firme (Sem slide)';
-                label.innerHTML = '<input type="checkbox" id="chk-tile-isGround"> Chão';
+                label.innerHTML = '<input type="checkbox" id="chk-tile-isGround" style="margin-right:5px;"> Chão';
                 container.appendChild(label);
                 this.checkGround = label.querySelector('input');
+            }
+        }
+
+        // CheckBox Ceiling (Teto)
+        this.checkCeiling = document.getElementById('chk-tile-isCeiling');
+        if (!this.checkCeiling) {
+            const container = this.infoSpan ? this.infoSpan.parentElement : null;
+            if (container) {
+                const label = document.createElement('label');
+                label.style.display = 'block';
+                label.style.marginBottom = '6px';
+                label.style.fontSize = '12px';
+                label.style.color = '#a29bfe'; // Roxo claro
+                label.style.cursor = 'pointer';
+                label.title = 'Teto (Bloqueia movimento para cima)';
+                label.innerHTML = '<input type="checkbox" id="chk-tile-isCeiling" style="margin-right:5px;"> Teto';
+                container.appendChild(label);
+                this.checkCeiling = label.querySelector('input');
             }
         }
 
@@ -130,6 +156,7 @@ export class TilePalette {
         this.isPlat = false;
         this.isWall = false;
         this.isGround = false;
+        this.isCeiling = false;
         this.zoom = 1.0;
 
         // Armazenar último clique para Shift-Select
@@ -183,6 +210,18 @@ export class TilePalette {
                 this.isGround = this.checkGround.checked;
                 if (this.selectedTile) {
                     this.selectedTile.ground = this.isGround;
+                    this.editor.ativarFerramentaBrush(this.selectedTile);
+                }
+            });
+        }
+
+        // Setup Checkbox Ceiling
+        if (this.checkCeiling) {
+            this.checkCeiling.checked = this.isCeiling;
+            this.checkCeiling.addEventListener('change', () => {
+                this.isCeiling = this.checkCeiling.checked;
+                if (this.selectedTile) {
+                    this.selectedTile.ceiling = this.isCeiling;
                     this.editor.ativarFerramentaBrush(this.selectedTile);
                 }
             });
@@ -495,11 +534,10 @@ export class TilePalette {
                     assetId: this.currentAsset.id,
                     sheetWidth: this.currentAsset.elemento.width,
                     solid: this.isSolid,
-                    sheetWidth: this.currentAsset.elemento.width,
-                    solid: this.isSolid,
                     plataforma: this.isPlat,
                     wall: this.isWall,
-                    ground: this.isGround
+                    ground: this.isGround,
+                    ceiling: this.isCeiling
                 };
             }
 

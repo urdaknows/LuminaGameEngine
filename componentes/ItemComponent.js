@@ -11,6 +11,7 @@ export default class ItemComponent {
         // Propriedades do Item
         this.itemId = 'moeda'; // ID para inventário
         this.quantidade = 1;   // Quantidade ao pegar
+        this.mensagemColeta = ''; // Mensagem customizada ao pegar
         this.icon = '';        // Ícone customizado (Asset ID)
 
         // Comportamento
@@ -99,6 +100,35 @@ export default class ItemComponent {
 
             if (sucesso) {
                 console.log(`[Item] ${this.itemId} coletado por ${player.nome}`);
+
+                // Tentar mostrar mensagem através do FloatingTextScript NO PLAYER (não no item!)
+                const playerScripts = player.componentes ? Array.from(player.componentes.values()).filter(c => c.tipo === 'ScriptComponent') : [];
+                console.log('[Item] Scripts do Player encontrados:', playerScripts.length);
+
+                for (const scriptComp of playerScripts) {
+                    console.log('[Item] Verificando script do Player:', scriptComp.scriptClassName, 'tem spawn?', scriptComp.instance && !!scriptComp.instance.spawn);
+
+                    if (scriptComp.instance && scriptComp.instance.spawn) {
+                        console.log('[Item] Disparando FloatingTextScript no Player...');
+                        // Mensagem padrão: +quantidade itemId
+                        let mensagem = this.mensagemColeta || `+${this.quantidade} ${this.itemId}`;
+
+                        // Se não tiver mensagem customizada na prop, tenta buscar do InteractionScript (legacy support)
+                        if (!this.mensagemColeta) {
+                            const itemScripts = this.entidade.componentes ? Array.from(this.entidade.componentes.values()).filter(c => c.tipo === 'ScriptComponent') : [];
+                            for (const is of itemScripts) {
+                                if (is.instance && is.instance.mensagem) {
+                                    // console.log('[Item] Usando mensagem customizada do InteractionScript:', is.instance.mensagem);
+                                    mensagem = is.instance.mensagem;
+                                    break;
+                                }
+                            }
+                        }
+
+                        scriptComp.instance.spawn(mensagem, 'yellow', 0, -50);
+                        break;
+                    }
+                }
 
                 if (this.destroyOnPickup) {
                     this.entidade.marcarParaDestruicao = true;

@@ -97,7 +97,18 @@ class ScriptComponent {
             }
             // Restaurar propriedades do Save (se houver e não for hot-reload)
             else if (this.propsIniciais && Object.keys(this.propsIniciais).length > 0) {
+                // FILTER: Ignorar propriedades de estado transiente (atacando, pulando, etc.)
+                const ignoredKeys = [
+                    'atacando', 'isAttacking', 'pulando', 'jumping',
+                    'dash', 'dashed', 'dashCooling', 'invulneravel',
+                    'attackTimer', 'cooldown', 'slideAtacando',
+                    'correndo', 'estaMorto', 'morto', 'tomouDano',
+                    'tempoDecorrido', 'tempoCooldown', 'tempoDash', 'tempoMorte'
+                ];
+
                 for (const [key, val] of Object.entries(this.propsIniciais)) {
+                    if (ignoredKeys.includes(key)) continue;
+
                     if (this.instance.hasOwnProperty(key)) {
                         // PROTEÇÃO: Não sobrescrever Array com String (Correção de Saves Corrompidos)
                         const currentVal = this.instance[key];
@@ -175,6 +186,10 @@ class ScriptComponent {
     renderizar(renderizador, x, y, width, height) {
         if (this.instance && this.instance.renderizar) {
             try {
+                // Debug: apenas para FloatingTextScript
+                // if (this.instance.constructor.name === 'FloatingTextScript' || this.instance._textos) {
+                //     console.log('[ScriptComponent] Renderizando FloatingTextScript, textos:', this.instance._textos ? this.instance._textos.length : 0);
+                // }
                 this.instance.renderizar(renderizador.ctx, x, y, width, height);
             } catch (e) {
                 // Throttle error log?
