@@ -19,6 +19,7 @@ export default class ParallaxComponent {
             opacity: 1,
             scale: 1,
             yOffset: 0,
+            xOffset: 0, // Novo: Manual X
             repeatX: true,
             repeatY: false,
             fitHeight: false,
@@ -37,8 +38,13 @@ export default class ParallaxComponent {
     update(dt) { }
 
     // Chamado pelo sistema de renderização
-    draw(ctx, camera, assetManager) {
-        if (!camera) return;
+    renderizar(renderizador) {
+        const ctx = renderizador.ctx;
+        const camera = renderizador.camera;
+        // Resolve AssetManager from Engine
+        const assetManager = this.entidade && this.entidade.engine ? this.entidade.engine.assetManager : null;
+
+        if (!camera) return false;
 
         ctx.save();
         ctx.setTransform(1, 0, 0, 1, 0, 0); // Screen Space
@@ -47,6 +53,8 @@ export default class ParallaxComponent {
         const viewW = ctx.canvas.width;
         const viewH = ctx.canvas.height;
         const zoom = camera ? (camera.zoom || 1) : 1;
+
+        let desenhouAlgo = false;
 
         this.layers.forEach(layer => {
             if (!layer.assetId || layer.opacity <= 0) return;
@@ -119,7 +127,9 @@ export default class ParallaxComponent {
             }
 
             // Aplicar Offset Manual
+            const manualX = layer.xOffset || 0;
             const manualY = layer.yOffset || 0;
+            offsetX += manualX;
             offsetY += manualY;
 
             const cols = (layer.repeatX !== false && !layer.fitScreen && !layer.fitCover) ? (Math.ceil(viewW / imgW) + 2) : 1;
@@ -134,6 +144,7 @@ export default class ParallaxComponent {
                         drawY + imgH > 0 && drawY < viewH) {
 
                         ctx.drawImage(img, Math.floor(drawX), Math.floor(drawY), Math.floor(imgW), Math.floor(imgH));
+                        desenhouAlgo = true;
                     }
                 }
             }
@@ -141,6 +152,7 @@ export default class ParallaxComponent {
             ctx.restore();
         });
         ctx.restore();
+        return desenhouAlgo;
     }
 
     clonar() {
@@ -160,6 +172,7 @@ export default class ParallaxComponent {
                 opacity: l.opacity,
                 scale: l.scale,
                 yOffset: l.yOffset,
+                xOffset: l.xOffset, // Save xOffset
                 repeatX: l.repeatX,
                 repeatY: l.repeatY,
                 fitHeight: l.fitHeight,

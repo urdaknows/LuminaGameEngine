@@ -23,6 +23,14 @@ class CameraFollowComponent {
         this.entidade = entidade;
     }
 
+    getPropriedades() {
+        return [
+            { nome: 'smoothSpeed', tipo: 'number', label: 'Suavidade', min: 0.001, max: 1.0, step: 0.005, valor: this.smoothSpeed },
+            { nome: 'offsetX', tipo: 'number', label: 'Offset X', valor: this.offsetX },
+            { nome: 'offsetY', tipo: 'number', label: 'Offset Y', valor: this.offsetY }
+        ];
+    }
+
     /**
      * Atualiza a posição da câmera
      */
@@ -50,10 +58,17 @@ class CameraFollowComponent {
         const currentCenterX = camera.x + viewW / 2;
         const currentCenterY = camera.y + viewH / 2;
 
-        // Lerp (Interpolação Linear)
-        // NovaPos = Atual + (Alvo - Atual) * Speed
-        const newCenterX = currentCenterX + (targetX - currentCenterX) * this.smoothSpeed;
-        const newCenterY = currentCenterY + (targetY - currentCenterY) * this.smoothSpeed;
+        // Lerp (Interpolação Linear) com DeltaTime
+        // Ajuste de frame rate (assumindo base 60fps ~ 16ms)
+        // Se smoothSpeed = 0.1, queremos 10% por frame a 60fps.
+        // Com deltaTime: fator = smoothSpeed * (deltaTime / (1/60)) = smoothSpeed * deltaTime * 60
+
+        let t = this.smoothSpeed * (deltaTime * 60);
+        // Clamp t para evitar overshooting com lag spikes
+        t = Math.max(0, Math.min(1, t));
+
+        const newCenterX = currentCenterX + (targetX - currentCenterX) * t;
+        const newCenterY = currentCenterY + (targetY - currentCenterY) * t;
 
         // Aplica na câmera
         camera.centralizarEm(newCenterX, newCenterY);

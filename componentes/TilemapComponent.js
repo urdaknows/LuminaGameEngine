@@ -161,6 +161,7 @@ class TilemapComponent {
                 const isSolid = (typeof tileData === 'object' && tileData.solid);
                 const isWall = (typeof tileData === 'object' && tileData.wall);
                 const isGround = (typeof tileData === 'object' && tileData.ground);
+                const isCeiling = (typeof tileData === 'object' && tileData.ceiling);
 
                 if (isSolid) {
                     // Overlay vermelho semi-transparente
@@ -172,8 +173,8 @@ class TilemapComponent {
                     ctx.strokeRect(drawX, drawY, size, size);
                 }
 
-                // Labels Visuais (W = Wall, G = Ground)
-                if (isWall || isGround) {
+                // Labels Visuais (W = Wall, G = Ground, C = Ceiling)
+                if (isWall || isGround || isCeiling) {
                     ctx.font = 'bold 14px "Segoe UI", Arial, sans-serif';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
@@ -196,6 +197,15 @@ class TilemapComponent {
                         ctx.strokeText('W', drawX + size / 2, wY);
                         ctx.fillStyle = '#00FFFF'; // Ciano
                         ctx.fillText('W', drawX + size / 2, wY);
+                    }
+
+                    if (isCeiling) {
+                        // C no Centro
+                        const cY = drawY + size / 2;
+                        ctx.strokeStyle = 'black';
+                        ctx.strokeText('C', drawX + size / 2, cY);
+                        ctx.fillStyle = '#A29BFE'; // Roxo (igual ao checkbox)
+                        ctx.fillText('C', drawX + size / 2, cY);
                     }
                 }
             }

@@ -123,7 +123,7 @@ class EditorPrincipal {
             snapToGrid: true,
             showGrid: true,
             showGrid: true,
-            showGizmos: false,
+            showGizmos: true, // [FIX] Enable Gizmos by default
             gameScale: 1.0 // Escala Global (Zoom no Play Mode)
         };
 
@@ -371,6 +371,12 @@ class EditorPrincipal {
 
         // Configurar resizers dos painéis
         this.configurarResizers();
+
+        // Inicializar Debug HUD
+        this.initDebugHUD();
+
+        // Iniciar loop de renderização para HUD funcionar
+        this.engine.loopJogo.iniciar();
     }
 
     /**
@@ -1854,7 +1860,8 @@ class EditorPrincipal {
                 renderizador.assetManager = this.assetManager;
             }
             // Injetar flag de debug (Gizmos)
-            renderizador.debugMode = this.modoEdicao && this.config.showGizmos;
+            // [FIX] Permite debug se: (Editor + Gizmos) OU (Engine Debug ativado via botão/código)
+            renderizador.debugMode = (this.modoEdicao && this.config.showGizmos) || this.engine.debugMode;
         }
 
         // Limpar canvas
@@ -2571,23 +2578,7 @@ class EditorPrincipal {
             componentsHtml += createComponentHtml('CollisionComponent', 'Box Collider 2D', '📦', '#2ecc71', colHtml, true);
         }
 
-        // 2.5 CameraFollowComponent
-        const camComp = ent.obterComponente('CameraFollowComponent');
-        if (camComp) {
-            const camHtml = `
-                <div style="display:flex; gap:5px;">
-                    <div style="flex:1;">
-                       <label style="font-size:10px; color:#aaa;">Smooth</label>
-                       <input type="number" step="0.01" value="${camComp.smoothSpeed}" class="plugin-prop" data-plugin="CameraFollowComponent" data-prop="smoothSpeed" style="width:100%; background:#111; color:white; border:1px solid #444;">
-                   </div>
-                    <div style="flex:1;">
-                       <label style="font-size:10px; color:#aaa;">Offset Y</label>
-                       <input type="number" value="${camComp.offsetY}" class="plugin-prop" data-plugin="CameraFollowComponent" data-prop="offsetY" style="width:100%; background:#111; color:white; border:1px solid #444;">
-                   </div>
-                </div>
-            `;
-            componentsHtml += createComponentHtml('CameraFollowComponent', 'Camera Follow', '🎥', '#3498db', camHtml, true);
-        }
+
 
         // 2.7 TilemapComponent
         const tileComp = ent.obterComponente('TilemapComponent');
@@ -2732,22 +2723,34 @@ class EditorPrincipal {
                                 <input type="number" step="1" value="${layer.yOffset || 0}" class="parallax-layer-prop" data-index="${index}" data-prop="yOffset" style="width:100%; background:#111; color:white; border:1px solid #444;">
                             </div>
                         </div>
-                         <div style="display:flex; gap:10px; margin-top:5px; align-items:center;">
-                            <label style="font-size:10px; color:#ccc; display:flex; align-items:center; gap:3px;">
-                                <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="repeatX" ${(layer.repeatX !== false) ? 'checked' : ''}> Rep X
-                            </label>
-                            <label style="font-size:10px; color:#ccc; display:flex; align-items:center; gap:3px;">
-                                <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="repeatY" ${(layer.repeatY) ? 'checked' : ''}> Rep Y
-                            </label>
-                             <label style="font-size:10px; color:#ccc; display:flex; align-items:center; gap:3px;">
-                                <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="fitHeight" ${(layer.fitHeight) ? 'checked' : ''}> Fit H
-                            </label>
-                             <label style="font-size:10px; color:#ccc; display:flex; align-items:center; gap:3px;">
-                                <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="fitScreen" ${(layer.fitScreen) ? 'checked' : ''}> Fit SCREEN
-                            </label>
-                             <label style="font-size:10px; color:#ccc; display:flex; align-items:center; gap:3px;">
-                                <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="fitCover" ${(layer.fitCover) ? 'checked' : ''}> COVER
-                            </label>
+                        <!-- New Layout: Groups -->
+                         <div style="margin-top:8px; padding-top:5px; border-top:1px dashed #333;">
+                            <div style="margin-bottom:5px;">
+                                <div style="font-size:9px; color:#888; margin-bottom:2px;">Repetição</div>
+                                <div style="display:flex; gap:10px;">
+                                    <label style="font-size:10px; color:#ccc; display:flex; align-items:center; gap:3px;">
+                                        <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="repeatX" ${(layer.repeatX !== false) ? 'checked' : ''}> Horizontal (X)
+                                    </label>
+                                    <label style="font-size:10px; color:#ccc; display:flex; align-items:center; gap:3px;">
+                                        <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="repeatY" ${(layer.repeatY) ? 'checked' : ''}> Vertical (Y)
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div style="margin-bottom:5px;">
+                                <div style="font-size:9px; color:#888; margin-bottom:2px;">Ajuste de Tela</div>
+                                 <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                                    <label style="font-size:10px; color:#ccc; display:flex; align-items:center; gap:3px;" title="Ajusta altura ao jogo">
+                                        <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="fitHeight" ${(layer.fitHeight) ? 'checked' : ''}> Altura
+                                    </label>
+                                     <label style="font-size:10px; color:#ccc; display:flex; align-items:center; gap:3px;" title="Cobre a tela inteira">
+                                        <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="fitScreen" ${(layer.fitScreen) ? 'checked' : ''}> Tela Cheia
+                                    </label>
+                                     <label style="font-size:10px; color:#ccc; display:flex; align-items:center; gap:3px;" title="Modo Cover (CSS Style)">
+                                        <input type="checkbox" class="parallax-layer-prop" data-index="${index}" data-prop="fitCover" ${(layer.fitCover) ? 'checked' : ''}> Cover
+                                    </label>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -3046,6 +3049,29 @@ class EditorPrincipal {
             componentsHtml += createComponentHtml('InventoryComponent', 'Inventário (Player)', '🎒', '#f39c12', invHtml, true);
         }
 
+        // 2.15 CameraFollowComponent
+        const camFollow = ent.obterComponente('CameraFollowComponent');
+        if (camFollow) {
+            let camHtml = `
+            <div style="background:#222; padding:5px; border-radius:4px; margin-bottom:5px;">
+                <div style="margin-bottom:5px;">
+                     <label style="font-size:10px; color:#aaa;">Suavidade (0-1) - Menor = Mais Lento</label>
+                     <input type="number" step="0.01" min="0.01" max="1.0" value="${camFollow.smoothSpeed}" class="plugin-prop" data-plugin="CameraFollowComponent" data-prop="smoothSpeed" style="width:100%; background:#111; color:white; border:1px solid #444; padding:5px;">
+                </div>
+                <div style="display:flex; gap:5px;">
+                    <div style="flex:1;">
+                         <label style="font-size:10px; color:#aaa;">Offset X (Horizontal)</label>
+                         <input type="number" value="${camFollow.offsetX}" class="plugin-prop" data-plugin="CameraFollowComponent" data-prop="offsetX" style="width:100%; background:#111; color:white; border:1px solid #444; padding:5px;">
+                    </div>
+                    <div style="flex:1;">
+                         <label style="font-size:10px; color:#aaa;">Offset Y (Vertical)</label>
+                         <input type="number" value="${camFollow.offsetY}" class="plugin-prop" data-plugin="CameraFollowComponent" data-prop="offsetY" style="width:100%; background:#111; color:white; border:1px solid #444; padding:5px;">
+                    </div>
+                </div>
+            </div>`;
+            componentsHtml += createComponentHtml('CameraFollowComponent', 'Camera Follow', '🎥', '#9b59b6', camHtml, true);
+        }
+
         // 2.15 ItemComponent
         const itemComp = ent.obterComponente('ItemComponent');
         if (itemComp) {
@@ -3095,6 +3121,11 @@ class EditorPrincipal {
 
                     <label style="font-size:10px; color:#aaa;">Som de Pickup (Asset ID)</label>
                     <input type="text" value="${itemComp.pickupSound || ''}" class="plugin-prop" data-plugin="ItemComponent" data-prop="pickupSound" style="width:100%; background:#111; color:#aaa; border:1px solid #444; padding:5px;">
+                    
+                    <div style="margin-top:5px;">
+                         <label style="font-size:10px; color:#aaa;">Mensagem ao Pegar (Sobrescreve ID)</label>
+                         <input type="text" value="${itemComp.mensagemColeta || ''}" placeholder="(Padrão)" class="plugin-prop" data-plugin="ItemComponent" data-prop="mensagemColeta" style="width:100%; background:#111; color:#2ecc71; border:1px solid #444; padding:5px;">
+                    </div>
                 </div>
             </div>`;
             componentsHtml += createComponentHtml('ItemComponent', 'Item Coletável', '💎', '#9b59b6', itemHtml, true);
@@ -3293,10 +3324,18 @@ class EditorPrincipal {
                 const isAnimProp = prop.startsWith('anim') && typeof valor === 'string';
                 html += `<div style="margin-bottom:4px;">`;
                 html += `<label style="font-size:10px; color:#888;">${prop}</label>`;
+
                 if (isAnimProp) {
                     html += `<div class="anim-dropzone-script" data-script-id="${scriptId}" data-prop="${prop}" style="border:1px dashed #666; padding:4px; font-size:11px; color:#cfc; cursor:default;">${valor || '(None)'}</div>`;
+                } else if (typeof valor === 'boolean') {
+                    // Checkbox
+                    html += `<br><input type="checkbox" class="script-prop-input" data-script-id="${scriptId}" data-prop="${prop}" ${valor ? 'checked' : ''} data-type="boolean" style="cursor:pointer;">`;
+                } else if (prop === 'mensagem' || (typeof valor === 'string' && valor.length > 50)) {
+                    // TextArea
+                    html += `<textarea class="script-prop-input" data-script-id="${scriptId}" data-prop="${prop}" data-type="string" style="width:100%; height:60px; background:#111; border:1px solid #333; color:white; font-size:10px; padding:2px; resize:vertical;">${valor || ''}</textarea>`;
                 } else {
-                    html += `<input type="text" class="script-prop-input" data-script-id="${scriptId}" data-prop="${prop}" value="${valor}" style="width:100%; background:#111; border:1px solid #333; color:white; font-size:10px; padding:2px; transition: border-color 0.2s;">`;
+                    const inputType = typeof valor === 'number' ? 'number' : 'text';
+                    html += `<input type="${inputType}" class="script-prop-input" data-script-id="${scriptId}" data-prop="${prop}" value="${valor}" data-type="${typeof valor}" style="width:100%; background:#111; border:1px solid #333; color:white; font-size:10px; padding:2px; transition: border-color 0.2s;">`;
                 }
                 html += `</div>`;
             });
@@ -3394,6 +3433,32 @@ class EditorPrincipal {
             }
         };
         bindInput('prop-nome', 'nome');
+
+        // Listeners para Propriedades de Scripts (Dinâmico)
+        document.querySelectorAll('.script-prop-input').forEach(input => {
+            const updateScriptProp = (e) => {
+                const scriptId = input.dataset.scriptId;
+                const prop = input.dataset.prop;
+                const type = input.dataset.type;
+
+                const scriptComp = ent.obterComponente(scriptId);
+                if (scriptComp && scriptComp.instance) {
+                    let val = e.target.value;
+                    if (type === 'number') val = parseFloat(val);
+                    if (type === 'boolean') val = e.target.checked;
+
+                    scriptComp.instance[prop] = val;
+                    // TODO: Adicionar suporte a Undo/Redo aqui se necessário
+                }
+            };
+
+            if (input.type === 'checkbox') {
+                input.addEventListener('change', updateScriptProp);
+            } else {
+                input.addEventListener('input', updateScriptProp);
+                input.addEventListener('change', updateScriptProp); // Commit final
+            }
+        });
 
         // Render Order (Z) Listeners
         document.getElementById('btn-order-back')?.addEventListener('click', () => {
@@ -3773,7 +3838,18 @@ class EditorPrincipal {
             input.addEventListener('change', (e) => {
                 const scriptId = e.target.dataset.scriptId;
                 const propName = e.target.dataset.prop;
-                const valor = e.target.value;
+                const type = e.target.dataset.type;
+                let valor = e.target.value;
+
+                if (type === 'boolean') {
+                    valor = e.target.checked;
+                    // Update instance immediately for checkboxes since they don't fire 'input' usually
+                    const comp = ent.obterComponente(scriptId);
+                    if (comp) comp.instance[propName] = valor;
+                } else if (type === 'number') {
+                    valor = parseFloat(valor);
+                }
+
                 const comp = ent.obterComponente(scriptId);
 
                 if (comp) {
@@ -4551,8 +4627,6 @@ class EditorPrincipal {
             [t('category.gameplay')]: [
                 { id: 'DialogueComponent', nome: t('comp.dialogueSystem'), icon: '💬', unico: true },
                 { id: 'KillZoneComponent', nome: t('comp.killZone'), icon: '💀', unico: true },
-                { id: 'DialogueComponent', nome: t('comp.dialogueSystem'), icon: '💬', unico: true },
-                { id: 'KillZoneComponent', nome: t('comp.killZone'), icon: '💀', unico: true },
                 { id: 'CheckpointComponent', nome: t('comp.checkpoint'), icon: '🚩', unico: true },
                 { id: 'InventoryComponent', nome: 'Inventário (Player)', icon: '🎒', unico: true },
                 { id: 'ItemComponent', nome: 'Item Coletável', icon: '💎', unico: true }
@@ -4568,7 +4642,8 @@ class EditorPrincipal {
                 { id: 'ScriptComponent_Interaction', nome: t('comp.interaction'), icon: '💬', unico: false },
                 { id: 'ScriptComponent_Melee', nome: t('comp.meleeCombat'), icon: '⚔️', unico: false },
                 { id: 'ScriptComponent_Respawn', nome: t('comp.respawn'), icon: '👻', unico: false },
-                { id: 'ScriptComponent_Inventory', nome: 'Controlador de Inventário', icon: '🎒', unico: true }
+                { id: 'ScriptComponent_Inventory', nome: 'Controlador de Inventário', icon: '🎒', unico: true },
+                { id: 'ScriptComponent_AreaMsg', nome: 'Área de Mensagem', icon: '🗨️', unico: true }
             ],
             [t('category.plugins')]: [
                 { id: 'ScriptComponent_FloatingText', nome: t('comp.floatingText'), icon: '✨', unico: true }
@@ -4779,6 +4854,8 @@ class EditorPrincipal {
                     this.adicionarScript(ent, 'respawn');
                 } else if (tipo === 'ScriptComponent_Inventory') {
                     this.adicionarScript(ent, 'inventoryControl');
+                } else if (tipo === 'ScriptComponent_AreaMsg') {
+                    this.adicionarScript(ent, 'areaMensagem');
                 }
                 // Componentes
                 else if (tipo === 'SpriteComponent') {
@@ -5031,7 +5108,23 @@ class EditorPrincipal {
             if (this.painelAssets) this.painelAssets.atualizar();
         }
 
-        // Limpar entidades atuais
+        // Limpar entidades atuais (Com Cleanup de Componentes)
+        this.entidades.forEach(ent => {
+            // Chama onDestroy de cada componente se existir
+            if (ent.componentes) {
+                ent.componentes.forEach(comp => {
+                    // Componente padrão
+                    if (typeof comp.onDestroy === 'function') {
+                        try { comp.onDestroy(); } catch (e) { console.error('Error on Destroy:', e); }
+                    }
+                    // Script Instance
+                    if (comp.instance && typeof comp.instance.onDestroy === 'function') {
+                        try { comp.instance.onDestroy(); } catch (e) { console.error('Error on Script Destroy:', e); }
+                    }
+                });
+            }
+        });
+
         this.entidades = [];
         this.engine.entidades = [];
         this.entidadeSelecionada = null;
@@ -5251,15 +5344,40 @@ class EditorPrincipal {
                         const valor = comp.instance[key];
                         const tipoValor = typeof valor;
 
-                        if (tipoValor === 'number' || tipoValor === 'string') {
-                            const inputType = tipoValor === 'number' ? 'number' : 'text';
-                            propriedadesHtml += `
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
-                                    <label style="font-size: 10px; color: #aaa;">${key}</label>
+                        if (tipoValor === 'number' || tipoValor === 'string' || tipoValor === 'boolean') {
+                            let inputHtml = '';
+
+                            if (tipoValor === 'boolean') {
+                                // Checkbox
+                                inputHtml = `
+                                    <input type="checkbox" class="input-propriedade-script" 
+                                           data-script-id="${nome}" data-prop="${key}" data-type="${tipoValor}"
+                                           ${valor ? 'checked' : ''}
+                                           style="cursor: pointer;">
+                                `;
+                            } else if (key === 'mensagem' || (tipoValor === 'string' && valor.length > 50)) {
+                                // TextArea para mensagens ou textos longos
+                                inputHtml = `
+                                    <textarea class="input-propriedade-script" 
+                                           data-script-id="${nome}" data-prop="${key}" data-type="${tipoValor}"
+                                           style="width: 100%; height: 60px; background: #111; border: 1px solid #444; color: #fff; font-size: 11px; padding: 2px; resize: vertical;"
+                                    >${valor}</textarea>
+                                `;
+                            } else {
+                                // Input Normal
+                                const inputType = tipoValor === 'number' ? 'number' : 'text';
+                                inputHtml = `
                                     <input type="${inputType}" class="input-propriedade-script" 
                                            data-script-id="${nome}" data-prop="${key}" data-type="${tipoValor}"
                                            value="${valor}" 
                                            style="width: 60px; background: #111; border: 1px solid #444; color: #fff; font-size: 11px; padding: 2px;">
+                                `;
+                            }
+
+                            propriedadesHtml += `
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: 5px; flex-direction: ${key === 'mensagem' ? 'column' : 'row'};">
+                                    <label style="font-size: 10px; color: #aaa; margin-bottom: ${key === 'mensagem' ? '3px' : '0'};">${key}</label>
+                                    ${inputHtml}
                                 </div>
                             `;
                         }
@@ -5301,6 +5419,7 @@ class EditorPrincipal {
                     <option value="textoFlutuante">Plugin: Texto Flutuante</option>
                     <option value="inventoryControl">Controlador de Inventário</option>
                     <option value="interacao">Sistema de Interação (NPC/Placa)</option>
+                    <option value="areaMensagem">Área de Mensagem (Tutorial/Tags)</option>
                     <option value="vazio">Script Vazio</option>
                 </select>
                 <button id="btn-add-script" style="width: 100%; background: #2a2a4a; color: white; border: 1px solid #444; padding: 5px; border-radius: 4px; cursor: pointer; border-left: 3px solid #4ecdc4;">➕ Adicionar Novo Script</button>
@@ -5374,6 +5493,9 @@ class EditorPrincipal {
         } else if (tipo === 'inventoryControl') {
             scriptComp.nome = 'Controlador de Inventário';
             codigo = gerador.gerarControladorInventario();
+        } else if (tipo === 'areaMensagem') {
+            scriptComp.nome = 'Área de Mensagem';
+            codigo = gerador.gerarScriptAreaMensagem();
         } else {
             const timestamp = Date.now();
             scriptComp.nome = 'Script Customizado';
@@ -5788,6 +5910,85 @@ class EditorPrincipal {
         } catch (e) {
             console.error('Erro ao colar entidade:', e);
             this.log('Erro ao colar: ' + e.message, 'error');
+        }
+    }
+
+    /**
+     * Inicializa a interface de Debug (FPS, Tempo)
+     */
+    initDebugHUD() {
+        const hud = document.createElement('div');
+        hud.id = 'debug-hud';
+        hud.style.position = 'fixed';
+        hud.style.top = '5px';
+        hud.style.right = '5px';
+        hud.style.zIndex = '2147483647'; // Max Int Z-Index
+        hud.style.textAlign = 'right';
+        hud.style.display = 'none'; // Inicialmente oculto
+        hud.style.pointerEvents = 'none'; // Não interfere com cliques
+
+        // FPS Container
+        const fpsDiv = document.createElement('div');
+        fpsDiv.style.background = 'rgba(0, 0, 0, 0.7)';
+        fpsDiv.style.color = '#00ff00';
+        fpsDiv.style.padding = '5px 10px';
+        fpsDiv.style.marginBottom = '5px';
+        fpsDiv.style.borderRadius = '4px';
+        fpsDiv.style.fontFamily = 'monospace';
+        fpsDiv.style.fontSize = '14px';
+        fpsDiv.style.fontWeight = 'bold';
+        fpsDiv.innerHTML = 'FPS: <span id="debug-fps">0</span>';
+        hud.appendChild(fpsDiv);
+
+        // Time Container
+        const timeDiv = document.createElement('div');
+        timeDiv.style.background = 'rgba(0, 0, 0, 0.7)';
+        timeDiv.style.color = '#f1c40f'; // Amarelo
+        timeDiv.style.padding = '5px 10px';
+        timeDiv.style.borderRadius = '4px';
+        timeDiv.style.fontFamily = 'monospace';
+        timeDiv.style.fontSize = '14px';
+        timeDiv.style.fontWeight = 'bold';
+        timeDiv.innerHTML = 'TIME: <span id="debug-time">00:00</span>';
+        hud.appendChild(timeDiv);
+
+        // Anexar ao elemento pai do canvas (suporte fullscreen)
+        const target = (this.engine && this.engine.canvas && this.engine.canvas.parentElement) || document.body;
+        target.appendChild(hud);
+        this.uiDebugHUD = hud;
+        this.uiFPS = document.getElementById('debug-fps');
+        this.uiTime = document.getElementById('debug-time');
+
+        // Hook no engine VIA INTERVAL (bypass de cache)
+        setInterval(() => this.atualizarDebugHUD(), 100); // 10x por segundo
+    }
+
+    /**
+     * Atualiza os valores do Debug HUD
+     */
+    atualizarDebugHUD() {
+        if (!this.engine) return;
+
+        // Controle de visibilidade baseado no modo debug do engine
+        const debugMode = this.engine.debugMode === true;
+        if (this.uiDebugHUD) {
+            this.uiDebugHUD.style.display = debugMode ? 'block' : 'none';
+        }
+
+        if (!debugMode) return;
+
+        // Atualizar FPS
+        if (this.uiFPS) {
+            this.uiFPS.textContent = this.engine.fps || 0;
+        }
+
+        // Atualizar Tempo
+        if (this.uiTime) {
+            const totalSeconds = Math.floor(this.engine.tempoJogo || 0);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            const timeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            this.uiTime.textContent = timeStr;
         }
     }
 }

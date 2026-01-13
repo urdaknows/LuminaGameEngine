@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumina Engine Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #000;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        canvas {
+            image-rendering: pixelated;
+            /* Essential for pixel art */
+            background-color: #111;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        #loading {
+            position: absolute;
+            font-size: 24px;
+            color: #ccc;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="loading">Carregando Jogo...</div>
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Runtime Engine -->
+    <script type="module" src="../Runtime.js"></script>
+</body>
+
+</html>

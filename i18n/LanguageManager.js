@@ -7,13 +7,14 @@ import translations from './translations.js';
 class LanguageManager {
     constructor() {
         // Idioma padrão
+        // Traduções disponíveis
+        this.translations = translations;
+
+        // Idioma padrão
         this.defaultLanguage = 'pt-BR';
 
         // Idioma atual (carrega do localStorage ou usa padrão)
         this.currentLanguage = this.loadLanguagePreference() || this.defaultLanguage;
-
-        // Traduções disponíveis
-        this.translations = translations;
 
         // Idiomas suportados
         this.supportedLanguages = {

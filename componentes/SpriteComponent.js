@@ -191,7 +191,7 @@ export class SpriteComponent {
         }
 
         // DEBUG: Se chegou aqui, não achou a animação na lista local
-        // console.warn(`[SpriteComponent] Animação '${nome}' não encontrada nas chaves:`, Object.keys(this.animacoes || {}));
+        console.warn(`[SpriteComponent] Animação '${nome}' não encontrada nas chaves:`, Object.keys(this.animacoes || {}));
 
         // 2. Se não achou, verifica se é um ID de outro Asset (para trocar sprite inteiro)
         // Isso permite usar assets separados para cada estado (Ex: Heroi_Idle.png, Heroi_Run.png)
@@ -412,6 +412,8 @@ export class SpriteComponent {
             // console.warn('[SpriteComponent] No image and no assetId. Cannot render.');
             return false;
         }
+
+
 
         const ctx = renderizador.ctx;
 
