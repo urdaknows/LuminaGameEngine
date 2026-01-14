@@ -18,6 +18,7 @@ export default class ItemComponent {
         this.autoPickup = true; // Pega ao encostar
         this.destroyOnPickup = true; // Destroi a entidade ao pegar
         this.pickupSound = ''; // Asset ID do som
+        this.pickupPitch = 1.0; // Pitch do som
 
         // Efeitos visuais opcionais
         this.flutuar = true;
@@ -138,6 +139,9 @@ export default class ItemComponent {
                         if (idx > -1) this.entidade.engine.entidades.splice(idx, 1);
                     }
                 }
+                if (this.pickupSound && window.AudioManager) {
+                    window.AudioManager.play(this.pickupSound, 1.0, false, this.pickupPitch || 1.0);
+                }
             } else {
                 console.log('[Item] Inventário cheio!');
             }
@@ -150,6 +154,9 @@ export default class ItemComponent {
             itemId: this.itemId,
             quantidade: this.quantidade,
             icon: this.icon, // Salvar ícone
+            pickupSound: this.pickupSound,
+            pickupPitch: this.pickupPitch,
+            autoPickup: this.autoPickup,
             autoPickup: this.autoPickup,
             destroyOnPickup: this.destroyOnPickup,
             flutuar: this.flutuar
@@ -160,6 +167,8 @@ export default class ItemComponent {
         this.itemId = dados.itemId || 'moeda';
         this.quantidade = dados.quantidade || 1;
         this.icon = dados.icon || ''; // Carregar ícone
+        this.pickupSound = dados.pickupSound || '';
+        this.pickupPitch = dados.pickupPitch !== undefined ? dados.pickupPitch : 1.0;
         this.autoPickup = dados.autoPickup !== undefined ? dados.autoPickup : true;
         this.destroyOnPickup = dados.destroyOnPickup !== undefined ? dados.destroyOnPickup : true;
         this.flutuar = dados.flutuar !== undefined ? dados.flutuar : true;

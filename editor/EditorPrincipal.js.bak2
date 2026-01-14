@@ -35,7 +35,6 @@ import LightComponent from '../componentes/LightComponent.js';
 import LightingSystem from '../sistemas/LightingSystem.js';
 import { LightingPresetManager } from './LightingPresetManager.js';
 import { EditorLighting } from './EditorLighting.js';
-import { EditorAudio } from './EditorAudio.js';
 import { HistoryManager, CmdMoveEntity, CmdCreateEntity, CmdDeleteEntity, CmdChangeProperty, CmdResizeEntity } from './HistoryManager.js';
 
 class EditorPrincipal {
@@ -100,7 +99,6 @@ class EditorPrincipal {
         // Sistema de Presets e Editor de Iluminação
         this.lightingPresetManager = new LightingPresetManager();
         this.editorLighting = new EditorLighting(this);
-        this.editorAudio = new EditorAudio(this);
 
         // Sistema de Histórico (Undo/Redo)
         this.history = new HistoryManager(this);
@@ -499,10 +497,10 @@ class EditorPrincipal {
 
         // Audio System Buttons
         document.getElementById('btn-audio-manager')?.addEventListener('click', () => {
-            if (this.editorAudio) {
-                this.editorAudio.abrir();
-            } else {
-                this.log('Editor de Áudio não inicializado.', 'error');
+            // Por enquanto, apenas alerta, futuro: abrir modal de assets de audio
+            if (this.painelAssets) {
+                this.painelAssets.toggle(); // Reutiliza painel de assets por enquanto
+                this.log('Gerenciador de Áudio: Use o Painel de Assets para importar .mp3/.wav', 'info');
             }
         });
 
@@ -2891,10 +2889,9 @@ class EditorPrincipal {
                 </div>
                  <div>
                     <label style="font-size:10px; color:#aaa;">${i18n.t('killzone.respawnPoint')}</label>
-                    <div style="display:flex; gap:5px; align-items: center;">
-                         <input type="number" id="prop-kz-x" value="${killRef.resetPosition.x}" style="flex:1; background:#111; color:white; border:1px solid #444; padding:5px; border-radius:4px;width: 80px;">
-                         <input type="number" id="prop-kz-y" value="${killRef.resetPosition.y}" style="flex:1; background:#111; color:white; border:1px solid #444; padding:5px; border-radius:4px;width: 80px;">
-                         <button id="btn-kz-set-view" title="Definir para Centro da Câmera" style="background:#444; border:none; color:white; cursor:pointer; padding:5px; border-radius:4px;">📍</button>
+                    <div style="display:flex; gap:5px;">
+                         <input type="number" id="prop-kz-x" value="${killRef.resetPosition.x}" style="flex:1; background:#111; color:white; border:1px solid #444; padding:5px; border-radius:4px;width: 100px;">
+                         <input type="number" id="prop-kz-y" value="${killRef.resetPosition.y}" style="flex:1; background:#111; color:white; border:1px solid #444; padding:5px; border-radius:4px;width: 100px;">
                     </div>
                 </div>
             </div>`;
@@ -3168,24 +3165,7 @@ class EditorPrincipal {
                      </select>
 
                     <label style="font-size:10px; color:#aaa;">${i18n.t('item.pickupSound')}</label>
-                     <div class="audio-dropzone" data-target="item-audio-${itemComp.itemId}" style="display:flex; gap:5px; border:1px dashed #f1c40f; padding:4px; border-radius:4px; margin-bottom:5px; background: rgba(241, 196, 15, 0.1);">
-                        <select id="item-audio-${itemComp.itemId}" class="plugin-prop" data-plugin="ItemComponent" data-prop="pickupSound" style="flex:1; background:#111; color:#f1c40f; border:none; padding:5px;">
-                            <option value="">${i18n.t('item.defaultNone')}</option>
-                            ${(() => {
-                    let opts = '';
-                    if (this.assetManager && this.assetManager.assets.sons) {
-                        this.assetManager.assets.sons.forEach(asset => {
-                            const sel = (asset.id === itemComp.pickupSound) ? 'selected' : '';
-                            opts += `<option value="${asset.id}" ${sel}>🎵 ${asset.nome}</option>`;
-                        });
-                    }
-                    return opts;
-                })()}
-                        </select>
-                    </div>
-
-                    <label style="font-size:10px; color:#aaa;">${i18n.t('item.pickupPitch')}</label>
-                    <input type="number" step="0.1" value="${itemComp.pickupPitch !== undefined ? itemComp.pickupPitch : 1.0}" class="plugin-prop" data-plugin="ItemComponent" data-prop="pickupPitch" style="width:100%; background:#111; color:white; border:1px solid #444; padding:5px; margin-bottom:5px;">
+                    <input type="text" value="${itemComp.pickupSound || ''}" class="plugin-prop" data-plugin="ItemComponent" data-prop="pickupSound" style="width:100%; background:#111; color:#aaa; border:1px solid #444; padding:5px;">
                     
                     <div style="margin-top:5px;">
                          <label style="font-size:10px; color:#aaa;">${i18n.t('item.pickupMessage')}</label>
@@ -3408,26 +3388,7 @@ class EditorPrincipal {
         // Lógica simplificada baseada no renderizarPainelScripts anterior
         let html = '';
         if (scriptComp.instance) {
-            // FAILSAFE CRÍTICO: Para StatsRPG, garante que propriedades de áudio existam
-            // Isso resolve o problema de saves antigos que não têm essas propriedades
-            if (scriptComp.instance.constructor.name === 'StatsRPG') {
-                if (scriptComp.instance.somLevelUp === undefined) {
-                    scriptComp.instance.somLevelUp = '';
-                }
-                if (scriptComp.instance.pitchLevelUp === undefined) {
-                    scriptComp.instance.pitchLevelUp = 1.0;
-                }
-            }
-
             const props = Object.keys(scriptComp.instance).filter(k => k !== 'entidade' && !k.startsWith('_'));
-
-            // DEBUG: Log para StatsRPG
-            if (scriptComp.instance.constructor.name === 'StatsRPG') {
-                console.log('[DEBUG] StatsRPG properties:', props);
-                console.log('[DEBUG] somLevelUp exists?', 'somLevelUp' in scriptComp.instance);
-                console.log('[DEBUG] somLevelUp value:', scriptComp.instance.somLevelUp);
-            }
-
             if (props.length > 0) html += '<div style="background:#222; padding:5px; border-radius:4px; margin-top:5px;">';
             props.forEach(prop => {
                 const valor = scriptComp.instance[prop];
@@ -3455,21 +3416,6 @@ class EditorPrincipal {
                 }
 
                 const isAnimProp = prop.startsWith('anim') && typeof valor === 'string';
-
-                // Detecta áudio por nome (som*) OU por metadata (tipo: 'audio')
-                // Nota: Aceita strings vazias também (valor === '')
-                let isAudioProp = prop.startsWith('som') && (typeof valor === 'string' || valor === '');
-
-                // Se não detectou por nome, verifica metadata
-                if (!isAudioProp && scriptComp.instance.constructor.metadata) {
-                    const metadata = scriptComp.instance.constructor.metadata;
-                    if (metadata.propriedades) {
-                        const propMeta = metadata.propriedades.find(p => p.nome === prop);
-                        if (propMeta && propMeta.tipo === 'audio') {
-                            isAudioProp = true;
-                        }
-                    }
-                }
 
                 // GERAÇÃO DINÂMICA DA CHAVE DE TRADUÇÃO
                 // Ex: MovimentacaoBasicaScript -> comp.movimentacaoBasicaScript.velocidade
@@ -3503,8 +3449,6 @@ class EditorPrincipal {
 
                 if (isAnimProp) {
                     html += `<div class="anim-dropzone-script" data-script-id="${scriptId}" data-prop="${prop}" style="border:1px dashed #666; padding:4px; font-size:11px; color:#cfc; cursor:default;">${valor || '(None)'}</div>`;
-                } else if (isAudioProp) {
-                    html += `<div class="audio-dropzone-script" data-script-id="${scriptId}" data-prop="${prop}" style="border:1px dashed #f1c40f; padding:4px; font-size:11px; color:#ffeaa7; cursor:default; background: rgba(241, 196, 15, 0.1);">🎵 ${valor || '(Solte Audio Aqui)'}</div>`;
                 } else if (typeof valor === 'boolean') {
                     // Checkbox
                     html += `<br><input type="checkbox" class="script-prop-input" data-script-id="${scriptId}" data-prop="${prop}" ${valor ? 'checked' : ''} data-type="boolean" style="cursor:pointer;">`;
@@ -3897,17 +3841,6 @@ class EditorPrincipal {
         document.getElementById('prop-kz-y')?.addEventListener('input', e => {
             const k = getKZ(); if (k) k.resetPosition.y = parseFloat(e.target.value);
         });
-        document.getElementById('btn-kz-set-view')?.addEventListener('click', () => {
-            const k = getKZ();
-            if (k && this.engine.renderizador) {
-                const cam = this.engine.renderizador.camera;
-                const cvs = this.engine.renderizador.canvas;
-                // Calcula centro da tela em coordenadas do mundo
-                k.resetPosition.x = Math.floor(cam.x + (cvs.width / 2));
-                k.resetPosition.y = Math.floor(cam.y + (cvs.height / 2));
-                this.atualizarPainelPropriedades();
-            }
-        });
 
         // Checkpoint Listeners
         document.getElementById('prop-check-ativo')?.addEventListener('change', e => {
@@ -4213,46 +4146,6 @@ class EditorPrincipal {
                 const map = ent.obterComponente('TilemapComponent');
                 if (map) map.limpar();
             }
-        });
-
-        // --- Drag & Drop: Script Audio Binding (NOVO) ---
-        document.querySelectorAll('.audio-dropzone-script').forEach(zone => {
-            zone.addEventListener('dragover', e => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'copy';
-                zone.style.borderColor = '#ffeaa7';
-                zone.style.background = '#3a3a2e';
-            });
-            zone.addEventListener('dragleave', e => {
-                zone.style.borderColor = '#f1c40f';
-                zone.style.background = 'rgba(241, 196, 15, 0.1)';
-            });
-            zone.addEventListener('drop', e => {
-                e.preventDefault();
-                zone.style.borderColor = '#f1c40f';
-                zone.style.background = 'rgba(241, 196, 15, 0.1)';
-
-                const dataStr = e.dataTransfer.getData('text/plain');
-                if (!dataStr) return;
-
-                try {
-                    const data = JSON.parse(dataStr);
-                    // Aceita apenas asset_audio
-                    if (data.tipo === 'asset_audio') {
-                        const scriptId = zone.dataset.scriptId;
-                        const propName = zone.dataset.prop;
-                        const scriptComp = ent.obterComponente(scriptId);
-
-                        if (scriptComp && scriptComp.instance) {
-                            scriptComp.instance[propName] = data.id; // Salva o ID do asset
-                            this.atualizarPainelPropriedades();
-                            this.log(`Audio vinculado: ${data.id}`, 'success');
-                        }
-                    } else {
-                        this.log('Apenas arquivos de áudio podem ser soltos aqui!', 'warning');
-                    }
-                } catch (err) { console.error(err); }
-            });
         });
 
         // --- Drag & Drop: Script Anim Binding ---
@@ -4831,58 +4724,6 @@ class EditorPrincipal {
                 renderList();
                 this.atualizarPainelPropriedades();
             }
-        };
-
-        // Asset Picker Button
-        modal.querySelector('#btn-pick-asset').onclick = () => {
-            const assetInput = modal.querySelector('#el-assetId');
-
-            // Create asset picker modal
-            const picker = document.createElement('div');
-            picker.style.cssText = `
-                position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-                width: 400px; max-height: 500px; background: #222; border: 2px solid #4ecdc4;
-                box-shadow: 0 0 30px rgba(78, 205, 196, 0.3); z-index: 3500; border-radius: 8px;
-                display: flex; flex-direction: column; overflow: hidden;
-            `;
-
-            picker.innerHTML = `
-                <div style="padding:10px; background:#333; border-bottom:1px solid #4ecdc4; display:flex; justify-content:space-between; align-items:center;">
-                    <h4 style="margin:0; color:#4ecdc4;">🖼️ Select Image Asset</h4>
-                    <button id="btn-close-picker" style="background:none; border:none; color:#4ecdc4; cursor:pointer; font-size:16px;">✖</button>
-                </div>
-                <div id="asset-list" style="flex:1; overflow-y:auto; padding:10px;"></div>
-            `;
-
-            document.body.appendChild(picker);
-
-            const assetList = picker.querySelector('#asset-list');
-
-            // Populate with sprite assets
-            if (this.assetManager && this.assetManager.assets.sprites) {
-                this.assetManager.assets.sprites.forEach(asset => {
-                    const item = document.createElement('div');
-                    item.style.cssText = `
-                        padding: 8px; margin-bottom: 5px; background: #333; border-radius: 4px;
-                        cursor: pointer; border: 1px solid #444; transition: all 0.2s;
-                    `;
-                    item.innerHTML = `<span style="color:#4ecdc4;">🖼️</span> ${asset.nome}`;
-
-                    item.onmouseenter = () => item.style.background = '#4ecdc4';
-                    item.onmouseleave = () => item.style.background = '#333';
-
-                    item.onclick = () => {
-                        assetInput.value = asset.id;
-                        document.body.removeChild(picker);
-                    };
-
-                    assetList.appendChild(item);
-                });
-            } else {
-                assetList.innerHTML = '<div style="color:#666; text-align:center; padding:20px;">No sprite assets available</div>';
-            }
-
-            picker.querySelector('#btn-close-picker').onclick = () => document.body.removeChild(picker);
         };
 
         modal.querySelector('#btn-close-ui').onclick = () => document.body.removeChild(modal);
@@ -5552,69 +5393,43 @@ class EditorPrincipal {
                                 // --- AUTO-PATCH (Fix Wall Slide v5.0) ---
                                 // Verifica se é o script antigo e força atualização
                                 console.log('[Auto-Patch] Checking script:', componente.scriptName);
-                                if (componente.scriptName === 'MovimentacaoPlataformaScript' ||
-                                    componente.scriptName === 'MovimentacaoAvancada' ||
-                                    componente.scriptName === 'StatsRPG' ||
-                                    componente.scriptName === 'SimuladorMorte' ||
-                                    componente.scriptName === 'DeathScreenScript' ||
-                                    componente.scriptName === 'RespawnScript') {
+                                if (componente.scriptName === 'MovimentacaoPlataformaScript' || componente.scriptName === 'MovimentacaoAvancada') {
                                     const source = componente.source || '';
                                     console.log('[Auto-Patch] Script type matched. Checking version...');
-                                    console.log('[Auto-Patch] Has v5.0.1+?', source.includes('REFACTOR-FIXED'));
+                                    console.log('[Auto-Patch] Has v5.0.1?', source.includes('v5.0.1 REFACTOR-FIXED'));
+                                    console.log('[Auto-Patch] GeradorScript available?', typeof GeradorScript !== 'undefined');
 
-                                    // FORCE UPDATE para StatsRPG e SimuladorMorte se não tiver as correções recentes
-                                    const needsUpdate = !source.includes('v5.0.1 REFACTOR-FIXED') ||
-                                        (componente.scriptName === 'StatsRPG' && !source.includes('StatsRPG v2')) ||
-                                        (componente.scriptName === 'SimuladorMorte' && !source.includes('Diagnosticando')) ||
-                                        (componente.scriptName === 'RespawnScript' && !source.includes('Respawn v3'));
-
-                                    if (needsUpdate && typeof GeradorScript !== 'undefined') {
-                                        console.log(`🔄 [Auto-Patch] Atualizando ${componente.scriptName}...`);
+                                    if (!source.includes('v5.0.1 REFACTOR-FIXED') && typeof GeradorScript !== 'undefined') {
+                                        console.log('🔄 [Auto-Patch] Atualizando MovimentacaoPlataformaScript para v5.0.1...');
                                         try {
                                             const gerador = new GeradorScript();
-                                            let newSource = '';
-
-                                            // Seleciona o gerador correto
-                                            if (componente.scriptName === 'StatsRPG') {
-                                                newSource = gerador.gerarScriptStatsRPG();
-                                            } else if (componente.scriptName === 'SimuladorMorte') {
-                                                newSource = gerador.gerarScriptSimuladorMorte();
-                                            } else if (componente.scriptName === 'DeathScreenScript') {
-                                                // Verifica qual o tipo de morte
-                                                newSource = gerador.gerarScriptMorte();
-                                            } else if (componente.scriptName === 'RespawnScript') {
-                                                newSource = gerador.gerarScriptRespawnInimigo(); // O nome do método é enganoso, mas gera 'class RespawnScript'
-                                            } else {
-                                                // Default (MovimentacaoPlataforma)
-                                                const infoSimulado = {
-                                                    nome: 'MovimentacaoPlataformaScript',
-                                                    descricao: 'Script Movimentação Plataforma (Patched v5.0)',
-                                                    estados: ['idle', 'walk', 'jump', 'fall', 'wallSlide'],
-                                                    parametros: {
-                                                        velocidadeHorizontal: 200,
-                                                        forcaPulo: 600,
-                                                        forcaWallJump: 650,
-                                                        impulsoHorizontalWall: 300,
-                                                        velocidadeDeslizamento: 150,
-                                                        distanciaDeteccaoParede: 5
-                                                    }
-                                                };
-                                                newSource = gerador.gerarMovimentacaoPlataforma(infoSimulado);
-                                            }
-
-                                            if (newSource) {
-                                                console.log('[Auto-Patch] Generated Source Preview:', newSource.substring(0, 200));
-                                                componente.source = newSource;
-                                                console.log('✅ [Auto-Patch] Script atualizado com sucesso!');
-                                            }
+                                            // Configuração padrão segura (Atributos do usuário serão restaurados pelo Hot-Reload)
+                                            const infoSimulado = {
+                                                nome: 'MovimentacaoPlataformaScript',
+                                                descricao: 'Script Movimentação Plataforma (Patched v5.0)',
+                                                estados: ['idle', 'walk', 'jump', 'fall', 'wallSlide'],
+                                                parametros: {
+                                                    velocidadeHorizontal: 200,
+                                                    forcaPulo: 600,
+                                                    forcaWallJump: 650,
+                                                    impulsoHorizontalWall: 300,
+                                                    velocidadeDeslizamento: 150,
+                                                    distanciaDeteccaoParede: 5
+                                                }
+                                            };
+                                            const newSource = gerador.gerarMovimentacaoPlataforma(infoSimulado);
+                                            console.log('[Auto-Patch] Generated Source Preview:', newSource.substring(0, 200));
+                                            console.log('[Auto-Patch] Generated new source, length:', newSource.length);
+                                            componente.source = newSource;
+                                            console.log('✅ [Auto-Patch] Script atualizado com sucesso!');
                                         } catch (e) {
                                             console.error('❌ Falha no Auto-Patch:', e);
+                                            console.error('Stack:', e.stack);
                                         }
                                     } else {
-                                        console.log('[Auto-Patch] Script já está atualizado');
+                                        console.log('[Auto-Patch] Script já está atualizado ou GeradorScript não disponível');
                                     }
                                 }
-
                                 // -----------------------------------------
 
                                 entidade.adicionarComponente(componente.id, componente);

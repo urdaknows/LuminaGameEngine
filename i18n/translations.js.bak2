@@ -41,44 +41,7 @@ const translations = {
         'comp.movimentacaoPlataformaScript.OffsetWallDir': 'Offset da Parede Direita',
         'comp.movimentacaoPlataformaScript.ParedeEsq': 'Parede Esquerda',
         'comp.movimentacaoPlataformaScript.ParedeDir': 'Parede Direita',
-        'comp.movimentacaoPlataformaScript.somAndar': 'Som: Andar',
-        'comp.movimentacaoPlataformaScript.pitchAndar': 'Velocidade Som: Andar',
-        'comp.movimentacaoPlataformaScript.somCorrida': 'Som: Corrida',
-        'comp.movimentacaoPlataformaScript.pitchCorrida': 'Velocidade Som: Corrida',
-        'comp.movimentacaoPlataformaScript.somPulo': 'Som: Pulo',
-        'comp.movimentacaoPlataformaScript.pitchPulo': 'Velocidade Som: Pulo',
-        'comp.movimentacaoPlataformaScript.somPousar': 'Som: Pousar',
-        'comp.movimentacaoPlataformaScript.pitchPousar': 'Velocidade Som: Pousar',
-        'comp.movimentacaoPlataformaScript.somWallSlide': 'Som: Wall Slide',
-        'comp.movimentacaoPlataformaScript.pitchWallSlide': 'Velocidade Som: Wall Slide',
-        'comp.movimentacaoPlataformaScript.somSlide': 'Som: Slide (Deslizar)',
-        'comp.movimentacaoPlataformaScript.pitchSlide': 'Velocidade Som: Slide',
         'comp.movimentacaoPlataformaScript.ParedeEsq': 'Velocidade',
-
-        // Variantes minúsculas para compatibilidade com propriedades do script
-        'comp.movimentacaoPlataformaScript.velocidade': 'Velocidade',
-        'comp.movimentacaoPlataformaScript.velocidadeCorrida': 'Velocidade Corrida',
-        'comp.movimentacaoPlataformaScript.forcaPulo': 'Força Pulo',
-        'comp.movimentacaoPlataformaScript.distanciaParede': 'Distância Parede',
-        'comp.movimentacaoPlataformaScript.velocidadeWallSlide': 'Velocidade Wall Slide',
-        'comp.movimentacaoPlataformaScript.offsetWallEsq': 'Offset Parede Esq',
-        'comp.movimentacaoPlataformaScript.offsetWallDir': 'Offset Parede Dir',
-        'comp.movimentacaoPlataformaScript.paredeEsq': 'Parede Esq (Debug)',
-        'comp.movimentacaoPlataformaScript.paredeDir': 'Parede Dir (Debug)',
-        'comp.movimentacaoPlataformaScript.defaultOffsetX': 'Offset X Padrão',
-        'comp.movimentacaoPlataformaScript.audioAndarInstancia': 'Audio Andar (Ref)',
-        'comp.movimentacaoPlataformaScript.audioCorridaInstancia': 'Audio Corrida (Ref)',
-        'comp.movimentacaoPlataformaScript.audioWallSlideInstancia': 'Audio Wall Slide (Ref)',
-        'comp.movimentacaoPlataformaScript.audioSlideInstancia': 'Audio Slide (Ref)',
-        'comp.movimentacaoPlataformaScript.foiNoChao': 'No Chão (Debug)',
-
-        // DeathScreen
-        'comp.deathScreenScript.dialog': 'Diálogo',
-        'comp.deathScreenScript.callbackRespawn': 'Callback Respawn',
-
-        // Combate
-        'comp.combateMeleeScript.inimigosAtingidos': 'Inimigos Atingidos',
-        'comp.combateMeleeScript.foiPressionado': 'Foi Pressionado',
 
 
 
@@ -249,7 +212,6 @@ const translations = {
         'item.iconSprite': 'Ícone no Inventário (Sprite)',
         'item.defaultNone': '(Padrão/Nenhum)',
         'item.pickupSound': 'Som de Pickup (Asset ID)',
-        'item.pickupPitch': 'Pitch do Pickup',
         'item.pickupMessage': 'Mensagem ao Pegar (Sobrescreve ID)',
         'item.defaultPlaceholder': '(Padrão)',
 
@@ -537,8 +499,6 @@ const translations = {
         'comp.statsRPG.xpInicial': 'XP Inicial',
         'comp.statsRPG.xpParaProximoLevel': 'XP Próximo Level',
         'comp.statsRPG.multiplicadorXP': 'Multiplicador XP',
-        'comp.statsRPG.somLevelUp': 'Som Level Up',
-        'comp.statsRPG.pitchLevelUp': 'Pitch Level Up',
         'comp.statsRPG.forca': 'Força',
         'comp.statsRPG.defesa': 'Defesa',
         'comp.statsRPG.velocidade': 'Velocidade',
@@ -636,25 +596,6 @@ const translations = {
         'settings.showGrid': 'Mostrar Grid',
         'settings.showGizmos': 'Mostrar Gizmos (Colliders)',
         'settings.btn.save': 'Salvar Configurações',
-
-        // CombateMeleeScript
-        'comp.combateMeleeScript.combateMeleeScript': 'Combate Melee',
-        'comp.combateMeleeScript.teclaAtaque': 'Tecla de Ataque',
-        'comp.combateMeleeScript.animAttack': 'Animação de Ataque',
-        'comp.combateMeleeScript.duracaoAtaque': 'Duração do Ataque',
-        'comp.combateMeleeScript.cooldownAtaque': 'Cooldown do Ataque',
-        'comp.combateMeleeScript.somAtaque': 'Som Ataque',
-        'comp.combateMeleeScript.pitchAtaque': 'Pitch Ataque',
-        'comp.combateMeleeScript.animSlide': 'Animação de Slide',
-        'comp.combateMeleeScript.slideVelocity': 'Velocidade do Slide',
-        'comp.combateMeleeScript.slideDuration': 'Duração do Slide',
-        'comp.combateMeleeScript.hitboxX': 'Hitbox X',
-        'comp.combateMeleeScript.hitboxY': 'Hitbox Y',
-        'comp.combateMeleeScript.hitboxW': 'Largura Hitbox',
-        'comp.combateMeleeScript.hitboxH': 'Altura Hitbox',
-        'comp.combateMeleeScript.somSlide': 'Som Slide',
-        'comp.combateMeleeScript.pitchSlide': 'Pitch Slide',
-        'comp.combateMeleeScript.mostrarDebugHitbox': 'Mostrar Hitbox (Debug)',
     },
 
     'en': {
@@ -669,44 +610,7 @@ const translations = {
         'comp.movimentacaoPlataformaScript.OffsetWallDir': 'Right Wall Offset',
         'comp.movimentacaoPlataformaScript.ParedeEsq': 'Left Wall',
         'comp.movimentacaoPlataformaScript.ParedeDir': 'Right Wall',
-        'comp.movimentacaoPlataformaScript.somAndar': 'Sound: Walk',
-        'comp.movimentacaoPlataformaScript.pitchAndar': 'Audio Speed: Walk',
-        'comp.movimentacaoPlataformaScript.somCorrida': 'Sound: Run',
-        'comp.movimentacaoPlataformaScript.pitchCorrida': 'Audio Speed: Run',
-        'comp.movimentacaoPlataformaScript.somPulo': 'Sound: Jump',
-        'comp.movimentacaoPlataformaScript.pitchPulo': 'Audio Speed: Jump',
-        'comp.movimentacaoPlataformaScript.somPousar': 'Sound: Land',
-        'comp.movimentacaoPlataformaScript.pitchPousar': 'Audio Speed: Land',
-        'comp.movimentacaoPlataformaScript.somWallSlide': 'Sound: Wall Slide',
-        'comp.movimentacaoPlataformaScript.pitchWallSlide': 'Audio Speed: Wall Slide',
-        'comp.movimentacaoPlataformaScript.somSlide': 'Sound: Slide',
-        'comp.movimentacaoPlataformaScript.pitchSlide': 'Audio Speed: Slide',
-        'comp.movimentacaoPlataformaScript.ParedeEsq': 'Wall Left (Debug)',
-
-        // Lowercase variants
-        'comp.movimentacaoPlataformaScript.velocidade': 'Speed',
-        'comp.movimentacaoPlataformaScript.velocidadeCorrida': 'Run Speed',
-        'comp.movimentacaoPlataformaScript.forcaPulo': 'Jump Force',
-        'comp.movimentacaoPlataformaScript.distanciaParede': 'Wall Distance',
-        'comp.movimentacaoPlataformaScript.velocidadeWallSlide': 'Wall Slide Speed',
-        'comp.movimentacaoPlataformaScript.offsetWallEsq': 'Wall Offset Left',
-        'comp.movimentacaoPlataformaScript.offsetWallDir': 'Wall Offset Right',
-        'comp.movimentacaoPlataformaScript.paredeEsq': 'Wall Left (Debug)',
-        'comp.movimentacaoPlataformaScript.paredeDir': 'Wall Right (Debug)',
-        'comp.movimentacaoPlataformaScript.defaultOffsetX': 'Default Offset X',
-        'comp.movimentacaoPlataformaScript.audioAndarInstancia': 'Walk Audio Inst',
-        'comp.movimentacaoPlataformaScript.audioCorridaInstancia': 'Run Audio Inst',
-        'comp.movimentacaoPlataformaScript.audioWallSlideInstancia': 'Wall Slide Audio Inst',
-        'comp.movimentacaoPlataformaScript.audioSlideInstancia': 'Slide Audio Inst',
-        'comp.movimentacaoPlataformaScript.foiNoChao': 'Grounded (Debug)',
-
-        // DeathScreen
-        'comp.deathScreenScript.dialog': 'Dialog',
-        'comp.deathScreenScript.callbackRespawn': 'Respawn Callback',
-
-        // Combate
-        'comp.combateMeleeScript.inimigosAtingidos': 'Enemies Hit',
-        'comp.combateMeleeScript.foiPressionado': 'Was Pressed',
+        'comp.movimentacaoPlataformaScript.ParedeEsq': 'Speed',
 
 
 
@@ -916,7 +820,6 @@ const translations = {
         'item.iconSprite': 'Inventory Icon (Sprite)',
         'item.defaultNone': '(Default/None)',
         'item.pickupSound': 'Pickup Sound (Asset ID)',
-        'item.pickupPitch': 'Pickup Pitch',
         'item.pickupMessage': 'Pickup Message (Overrides ID)',
         'item.defaultPlaceholder': '(Default)',
 
@@ -1290,52 +1193,6 @@ const translations = {
         'settings.showGizmos': 'Show Gizmos (Colliders)',
         'settings.btn.save': 'Save Settings',
 
-        'settings.btn.save': 'Save Settings',
-
-        // CombateMeleeScript
-        'comp.combateMeleeScript.combateMeleeScript': 'Melee Combat',
-        'comp.combateMeleeScript.teclaAtaque': 'Attack Key',
-        'comp.combateMeleeScript.animAttack': 'Attack Animation',
-        'comp.combateMeleeScript.duracaoAtaque': 'Attack Duration',
-        'comp.combateMeleeScript.cooldownAtaque': 'Attack Cooldown',
-        'comp.combateMeleeScript.somAtaque': 'Attack Sound',
-        'comp.combateMeleeScript.pitchAtaque': 'Attack Pitch',
-        'comp.combateMeleeScript.animSlide': 'Slide Animation',
-        'comp.combateMeleeScript.slideVelocity': 'Slide Velocity',
-        'comp.combateMeleeScript.slideDuration': 'Slide Duration',
-        'comp.combateMeleeScript.hitboxX': 'Hitbox X',
-        'comp.combateMeleeScript.hitboxY': 'Hitbox Y',
-        'comp.combateMeleeScript.hitboxW': 'Hitbox Width',
-        'comp.combateMeleeScript.hitboxH': 'Hitbox Height',
-        'comp.combateMeleeScript.somSlide': 'Slide Sound',
-        'comp.combateMeleeScript.pitchSlide': 'Slide Pitch',
-        'comp.combateMeleeScript.mostrarDebugHitbox': 'Show Hitbox (Debug)',
-
-        // Stats RPG
-        'comp.statsRPG.statsRPG': 'Stats RPG Script',
-        'comp.statsRPG.hpMax': 'Max HP',
-        'comp.statsRPG.hpInicial': 'Initial HP',
-        'comp.statsRPG.regeneracaoHP': 'HP Regeneration',
-        'comp.statsRPG.usarMana': 'Use Mana',
-        'comp.statsRPG.manaMax': 'Max Mana',
-        'comp.statsRPG.manaInicial': 'Initial Mana',
-        'comp.statsRPG.regeneracaoMana': 'Mana Regeneration',
-        'comp.statsRPG.usarStamina': 'Use Stamina',
-        'comp.statsRPG.staminaMax': 'Max Stamina',
-        'comp.statsRPG.staminaInicial': 'Initial Stamina',
-        'comp.statsRPG.regeneracaoStamina': 'Stamina Regeneration',
-        'comp.statsRPG.usarLevel': 'Use Level',
-        'comp.statsRPG.levelInicial': 'Initial Level',
-        'comp.statsRPG.xpInicial': 'Initial XP',
-        'comp.statsRPG.xpParaProximoLevel': 'XP To Next Level',
-        'comp.statsRPG.multiplicadorXP': 'XP Multiplier',
-        'comp.statsRPG.somLevelUp': 'Level Up Sound',
-        'comp.statsRPG.pitchLevelUp': 'Level Up Pitch',
-        'comp.statsRPG.forca': 'Strength',
-        'comp.statsRPG.defesa': 'Defense',
-        'comp.statsRPG.velocidade': 'Speed',
-        'comp.statsRPG.inteligencia': 'Intelligence',
-        'comp.statsRPG.mostrarLogs': 'Show Logs',
     }
 
     //Other Languages

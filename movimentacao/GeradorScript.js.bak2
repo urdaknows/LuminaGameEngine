@@ -56,7 +56,7 @@ class RespawnScript {
         // HOOK: Substitui método morrer
         this.entidade.morrer = this.aoMorrer.bind(this);
         
-        console.log('[Respawn v3] Ativado:', entidade.nome, '| HP:', this.startHP);
+        console.log('[Respawn v2] Ativado:', entidade.nome, '| HP:', this.startHP);
     }
 
     aoMorrer() {
@@ -116,9 +116,6 @@ class RespawnScript {
     renascer() {
         console.log('✨ Renasceu:', this.entidade.nome);
         this.estaMorto = false;
-
-        // Reset GLOBAL de morte
-        this.entidade.morto = false;
 
         // Restaura HP
         this.entidade.hp = this.startHP;
@@ -922,45 +919,20 @@ class InimigoPatrulhaScript {
         const offsetLeft = parseFloat(info.parametros.offsetVisualWallEsq) || 0;
         const offsetRight = parseFloat(info.parametros.offsetVisualWallDir) || 0;
 
-        let code = '// PLATFORMER SCRIPT v6.0 AUDIO-INTEGRATED\n';
+        let code = '// PLATFORMER SCRIPT v5.8.0 ATTACK-FIRST - Checks attack state before ANY input processing\n';
         code += 'class MovimentacaoPlataformaScript {\n';
         code += '  constructor(entidade) {\n';
         code += '    this.entidade = entidade;\n';
-
-        code += '    // === MOVIMENTO ===\n';
         code += '    this.velocidade = ' + vel + ';\n';
         code += '    this.velocidadeCorrida = ' + (vel * 1.8) + ';\n';
         code += '    this.forcaPulo = ' + pulo + ';\n';
         code += '    this.distanciaParede = ' + distParede + ';\n';
         code += '    this.velocidadeWallSlide = ' + wallSlideVel + ';\n';
-
-        code += '    // === VISUAL OFFSETS ===\n';
         code += '    this.offsetWallEsq = ' + offsetLeft + ';\n';
         code += '    this.offsetWallDir = ' + offsetRight + ';\n';
-
-        code += '    // === AUDIO (Propriedades Editaveis) ===\n';
-        code += '    this.somAndar = "";\n';
-        code += '    this.pitchAndar = 1.0;\n';
-        code += '    this.somCorrida = "";\n';
-        code += '    this.pitchCorrida = 1.0;\n';
-        code += '    this.somPulo = "";\n';
-        code += '    this.pitchPulo = 1.0;\n';
-        code += '    this.somPousar = "";\n';
-        code += '    this.pitchPousar = 1.0;\n';
-        code += '    this.somWallSlide = "";\n';
-        code += '    this.pitchWallSlide = 1.0;\n';
-
-        code += '    // Controle Interno de Audio\n';
-        code += '    this.audioAndarInstancia = null;\n';
-        code += '    this.audioCorridaInstancia = null;\n';
-        code += '    this.audioWallSlideInstancia = null;\n';
-        this.audioWallSlideInstancia = null;
-        code += '    this.foiNoChao = true;\n';
-
         code += '    this.paredeEsq = false;\n';
         code += '    this.paredeDir = false;\n';
-
-        code += '    // Capture default visual offset\n';
+        // Fix: Capture default visual offset to restore it when not sliding
         code += '    const sc = this.entidade.obterComponente("SpriteComponent");\n';
         code += '    let def = sc ? sc.offsetX : 0;\n';
         code += '    if (isNaN(def)) def = 0;\n';
@@ -976,28 +948,6 @@ class InimigoPatrulhaScript {
         code += '        this._defOffY = col.offsetY; this._crouchOffY = col.offsetY + (col.altura * 0.5);\n';
         code += '    }\n';
         code += '  }\n';
-
-        code += '  // --- AUDIO HELPER ---\n';
-        code += '  tocarSom(id, loop = false, controlsRef = null, pitch = 1.0) {\n';
-        code += '      if (!id || !window.AudioManager) return null;\n';
-        code += '      // Se já tem uma instância tocando e queremos loop, verifica se precisa atualizar pitch\n';
-        code += '      if (loop && controlsRef && controlsRef.playing) {\n';
-        code += '           if (controlsRef.setRate) controlsRef.setRate(pitch);\n';
-        code += '           return controlsRef;\n';
-        code += '      }\n';
-        code += '      \n';
-        code += '      const ctrl = window.AudioManager.play(id, 1.0, loop, pitch);\n';
-        code += '      if (loop && ctrl) ctrl.playing = true;\n';
-        code += '      return ctrl;\n';
-        code += '  }\n';
-        code += '  \n';
-        code += '  pararSom(controlsRef) {\n';
-        code += '      if (controlsRef) {\n';
-        code += '          controlsRef.stop();\n';
-        code += '          controlsRef.playing = false;\n';
-        code += '      }\n';
-        code += '  }\n\n';
-
         code += '  detectarParedes() {\n';
         code += '    this.paredeEsq = false; this.paredeDir = false;\n';
         code += '    if (!this.entidade.engine) return;\n';
@@ -1008,10 +958,14 @@ class InimigoPatrulhaScript {
         code += '    if (!colComp) return;\n';
         code += '    const bounds = colComp.obterLimitesAbsolutos(this.entidade);\n';
         code += '    const checkDist = this.distanciaParede; const marginY = 4;\n';
+        code += '    // STRICT: Head (Top + 4px) must be BELOW the wall top. \n';
+        code += '    // This forces the player to fall almost entirely past the corner before sliding.\n';
         code += '    const sensorTop = bounds.y + marginY;\n';
         code += '    const sensorBottom = bounds.y + bounds.h - marginY;\n';
         code += '    const sensorLeft = bounds.x - checkDist;\n';
         code += '    const sensorRight = bounds.x + bounds.w + checkDist;\n';
+        code += '    \n';
+        code += '    // Clearing moved to top\n';
         code += '    \n';
         code += '    for (const tmEntity of tilemapEntities) {\n';
         code += '      const tileComp = tmEntity.obterComponente("TilemapComponent");\n';
@@ -1028,80 +982,81 @@ class InimigoPatrulhaScript {
         code += '        for (let c = startCol; c <= endCol; c++) {\n';
         code += '          const tile = tileComp.getTile(c, r);\n';
         code += '          if (!tile) continue;\n';
+        code += '          \n';
+        code += '          if (!tile.solid && !tile.wall && !tile.ground) continue;\n';
+        code += '          \n';
         code += '          const tileX = tilemapX + c * tileSize;\n';
         code += '          const tileY = tilemapY + r * tileSize;\n';
-        code += '          if (!tile.solid && !tile.wall && !tile.ground) continue;\n';
+        code += '          // Strict Check: HEAD (SensorTop) must be BELOW the top of the wall tile to avoid corner grabs\n';
         code += '          const overlapsY = (sensorTop > tileY && sensorTop < tileY + tileSize && sensorBottom > tileY);\n';
         code += '          if (!overlapsY) continue;\n';
-        code += '          if (tileX + tileSize > sensorLeft && tileX < bounds.x) this.paredeEsq = true;\n';
-        code += '          if (tileX < sensorRight && tileX + tileSize > bounds.x + bounds.w) this.paredeDir = true;\n';
+        code += '          \n';
+        code += '          if (tileX + tileSize > sensorLeft && tileX < bounds.x) { \n';
+        code += '              this.paredeEsq = true; \n';
+        code += '              // console.log("LDetect:", "Top:", sensorTop, "> TileY:", tileY, "=", (sensorTop > tileY));\n';
+        code += '          }\n';
+        code += '          if (tileX < sensorRight && tileX + tileSize > bounds.x + bounds.w) { \n';
+        code += '              this.paredeDir = true; \n';
+        code += '              // console.log("RDetect:", "Top:", sensorTop, "> TileY:", tileY, "=", (sensorTop > tileY));\n';
+        code += '          }\n';
         code += '        }\n';
         code += '      }\n';
         code += '    }\n';
         code += '  }\n';
         code += '\n';
+        code += '  // Helper: Find other scripts by class name\n';
         code += '  obterScriptPorNome(nomeDaClasse) {\n';
         code += '    for (const [key, comp] of this.entidade.componentes) {\n';
-        code += '      if (key.startsWith("ScriptComponent") && comp.scriptName === nomeDaClasse) return comp.instance;\n';
+        code += '      if (key.startsWith("ScriptComponent") && comp.scriptName === nomeDaClasse) {\n';
+        code += '        return comp.instance; // The running script instance\n';
+        code += '      }\n';
         code += '    }\n';
         code += '    return null;\n';
         code += '  }\n';
         code += '\n';
         code += '  processarInput(input, deltaTime) {\n';
+        code += '    // CRITICAL: Check attack state FIRST, before any other logic\n';
+        code += '    // This prevents custom code (crouch, etc) from overriding attack animations\n';
         code += '    const attackScript = this.obterScriptPorNome("CombateMeleeScript");\n';
         code += '    const isAttacking = attackScript && attackScript.estaOcupado && attackScript.estaOcupado();\n';
-        code += '    if (isAttacking) { \n';
-        code += '         // Ao atacar, paramos o som de andar/corrida\n';
-        code += '         this.pararSom(this.audioAndarInstancia); this.audioAndarInstancia = null;\n';
-        code += '         this.pararSom(this.audioCorridaInstancia); this.audioCorridaInstancia = null;\n';
-        code += '         return;\n';
+        code += '    if (isAttacking) {\n';
+        code += '        // this.entidade.velocidadeX = 0; // Removed override to allow slide attacks\n';
+        code += '        return; // Let attack/slide script handle everything\n';
         code += '    }\n';
         code += '    \n';
         code += '    const noChao = this.entidade.noChao;\n';
-        code += '    \n';
-        code += '    // SOM: Pousar\n';
-        code += '    if (!this.foiNoChao && noChao) this.tocarSom(this.somPousar, false, null, this.pitchPousar);\n';
-        code += '    this.foiNoChao = noChao;\n';
-        code += '    \n';
         code += '    this.detectarParedes();\n';
         code += '    let vx = 0;\n';
         code += '    const correndo = input.teclaPressionada("Shift");\n';
         code += '    const pressEsq = input.teclaPressionada("a") || input.teclaPressionada("A") || input.teclaPressionada("ArrowLeft");\n';
         code += '    const pressDir = input.teclaPressionada("d") || input.teclaPressionada("D") || input.teclaPressionada("ArrowRight");\n';
         code += '    const pressDown = input.teclaPressionada("s") || input.teclaPressionada("S") || input.teclaPressionada("ArrowDown");\n';
-        code += '    const pressJump = input.teclaPrecionadaAgora(" ") || input.teclaPrecionadaAgora("w") || input.teclaPrecionadaAgora("W") || input.teclaPrecionadaAgora("ArrowUp");\n';
         code += '    \n';
+        code += '    // Calculate velocity based on state\n';
         code += '    let velAtual = this.velocidade;\n';
-        code += '    if (pressDown && noChao) velAtual = this.velocidadeAgachado || (this.velocidade * 0.5);\n';
-        code += '    else if (correndo) velAtual = this.velocidadeCorrida;\n';
+        code += '    if (pressDown && noChao) {\n';
+        code += '        velAtual = this.velocidadeAgachado; // Reduced speed when crouching\n';
+        code += '    } else if (correndo) {\n';
+        code += '        velAtual = this.velocidadeCorrida;\n';
+        code += '    }\n';
+        code += '    \n';
+        code += '    // Safety check to prevent NaN\n';
         code += '    if (isNaN(velAtual)) velAtual = this.velocidade;\n';
         code += '    \n';
         code += '    if (pressEsq) vx = -velAtual;\n';
         code += '    if (pressDir) vx = velAtual;\n';
+        code += '    \n';
+        code += '    // Safety check for velocity\n';
         code += '    if (isNaN(vx)) vx = 0;\n';
         code += '    this.entidade.velocidadeX = vx;\n';
         code += '    \n';
-        code += '    // --- SOM: Andar / Correr ---\n';
-        code += '    if (noChao && vx !== 0) {\n';
-        code += '        if (correndo && this.somCorrida) {\n';
-        code += '            // Toca Correr, para Andar\n';
-        code += '            this.pararSom(this.audioAndarInstancia); this.audioAndarInstancia = null;\n';
-        code += '            this.audioCorridaInstancia = this.tocarSom(this.somCorrida, true, this.audioCorridaInstancia, this.pitchCorrida);\n';
-        code += '        } else {\n';
-        code += '            // Toca Andar, para Correr\n';
-        code += '            this.pararSom(this.audioCorridaInstancia); this.audioCorridaInstancia = null;\n';
-        code += '            this.audioAndarInstancia = this.tocarSom(this.somAndar, true, this.audioAndarInstancia, this.pitchAndar);\n';
-        code += '        }\n';
-        code += '    } else {\n';
-        code += '        this.pararSom(this.audioAndarInstancia); this.audioAndarInstancia = null;\n';
-        code += '        this.pararSom(this.audioCorridaInstancia); this.audioCorridaInstancia = null;\n';
-
-        code += '    }\n';
-        code += '    \n';
         code += '    // ANIMACAO & ESTADO\n';
+        code += '    \n';
         code += '    const spriteComp = this.entidade.obterComponente("SpriteComponent");\n';
         code += '    const anims = spriteComp ? spriteComp.animacoes : {};\n';
         code += '    const hasAnim = (name) => anims && (anims[name] || anims[name.toLowerCase()] || anims[name.toUpperCase()]);\n';
+        code += '    \n';
+        code += '    // Helper: Tenta tocar animacao preferida, senao fallback\n';
         code += '    const playAnim = (p1, p2) => {\n';
         code += '        if (!spriteComp) return;\n';
         code += '        if (hasAnim(p1)) spriteComp.play(p1);\n';
@@ -1110,116 +1065,117 @@ class InimigoPatrulhaScript {
         code += '    \n';
         code += '    // WALL SLIDE LOGIC\n';
         code += '    if (!noChao && this.entidade.velocidadeY > 0 && ((this.paredeEsq && pressEsq) || (this.paredeDir && pressDir))) {\n';
+        code += '       // [Collider Resize: Crouch Size for Slide]\n';
         code += '       const colS = this.entidade.obterComponente("CollisionComponent");\n';
         code += '       if(colS && this._defH > 0 && colS.altura !== this._crouchH) { colS.altura = this._crouchH; colS.offsetY = this._crouchOffY; }\n';
         code += '       \n';
         code += '       if (this.entidade.velocidadeY > this.velocidadeWallSlide) this.entidade.velocidadeY = this.velocidadeWallSlide;\n';
         code += '       \n';
-        code += '       // SOM: Wall Slide (Prioridade: somWallSlide > somSlide)\n';
-        code += '       const somSlideFinal = this.somWallSlide;\n';
-        code += '       const pitchSlideFinal = this.somWallSlide ? this.pitchWallSlide : 1.0;\n';
-        code += '       this.audioWallSlideInstancia = this.tocarSom(somSlideFinal, true, this.audioWallSlideInstancia, pitchSlideFinal);\n';
-        code += '       \n';
+        code += '       // Physical Snap\n';
         code += '       if (this.paredeEsq) this.entidade.velocidadeX = -10;\n';
         code += '       if (this.paredeDir) this.entidade.velocidadeX = 10;\n';
         code += '       \n';
+        code += '       // Animation\n';
         code += '       if (hasAnim("wallslide")) spriteComp.play("wallslide");\n';
         code += '       else if (hasAnim("wall_slide")) spriteComp.play("wall_slide");\n';
         code += '       else if (hasAnim("slide")) spriteComp.play("slide");\n';
         code += '       else if (hasAnim("escalando")) spriteComp.play("escalando");\n';
         code += '       \n';
         code += '       if (spriteComp) {\n';
+        code += '           // Capture default offset when initializing slide\n';
         code += '           if (!this.isVisualSliding) {\n';
         code += '               this.defaultOffsetX = spriteComp.offsetX || 0;\n';
         code += '               this.isVisualSliding = true;\n';
         code += '           }\n';
-        code += '           if (this.paredeDir) { spriteComp.inverterX = false; spriteComp.offsetX = Number(this.defaultOffsetX) + Number(this.offsetWallDir); }\n';
-        code += '           if (this.paredeEsq) { spriteComp.inverterX = true; let rawVal = Number(this.defaultOffsetX) + Number(this.offsetWallEsq); if(isNaN(rawVal)) rawVal=0; spriteComp.offsetX = rawVal; }\n';
-        code += '       }\n';
-        code += '       \n';
-        code += '       // WALL JUMP\n';
-        code += '       if (pressJump) {\n';
-        code += '            this.entidade.velocidadeY = -this.forcaPulo;\n';
-        code += '            // SOM: Pulo\n';
-        code += '            this.tocarSom(this.somPulo);\n';
-        code += '            \n';
-        code += '            if (this.paredeEsq) this.entidade.velocidadeX = 300;\n';
-        code += '            if (this.paredeDir) this.entidade.velocidadeX = -300;\n';
-        code += '            // Reset Collider & Visual\n';
-        code += '            if(colS && this._defH > 0) { colS.altura = this._defH; colS.offsetY = this._defOffY; }\n';
-        code += '            if (this.isVisualSliding && spriteComp) { spriteComp.offsetX = this.defaultOffsetX; this.isVisualSliding = false; }\n';
-        code += '            // Stop Wall Sound\n';
-        code += '            this.pararSom(this.audioWallSlideInstancia); this.audioWallSlideInstancia = null;\n';
-        code += '       }\n';
-        code += '       \n';
-        code += '    } else {\n';
-        code += '       // NOT SLIDING: Reset Logic\n';
-        code += '       this.pararSom(this.audioWallSlideInstancia); this.audioWallSlideInstancia = null;\n';
-        code += '       \n';
-        code += '       if (this.isVisualSliding && spriteComp) { spriteComp.offsetX = this.defaultOffsetX; this.isVisualSliding = false; }\n';
-        code += '       const colS = this.entidade.obterComponente("CollisionComponent");\n';
-        code += '       if(colS && this._defH > 0 && colS.altura !== this._defH) { colS.altura = this._defH; colS.offsetY = this._defOffY; }\n';
-        code += '       \n';
-        code += '       // JUMP NORMAL\n';
-        code += '       if (noChao && pressJump) {\n';
-        code += '           this.entidade.velocidadeY = -this.forcaPulo;\n';
-        code += '           this.tocarSom(this.somPulo);\n';
-        code += '           this.foiNoChao = false;\n';
-        code += '       }\n';
-        code += '       \n';
-        code += '       // Animations\n';
-        code += '       if (noChao) {\n';
-        code += '           if (vx === 0) {\n';
-        code += '               if(pressDown) {\n';
-        code += '                   playAnim("crouch", "agachar");\n';
-        code += '                   // [Collider Resize: Ground]\n';
-        code += '                   const colG = this.entidade.obterComponente("CollisionComponent");\n';
-        code += '                   if (colG) {\n';
-        code += '                       if (!this._defH) { this._defH = colG.altura; this._crouchH = colG.altura * 0.5; this._defOffY = colG.offsetY; this._crouchOffY = colG.offsetY + (colG.altura * 0.5); }\n';
-        code += '                       if (colG.altura !== this._crouchH) { colG.altura = this._crouchH; colG.offsetY = this._crouchOffY; }\n';
-        code += '                   }\n';
-        code += '               } else {\n';
-        code += '                   playAnim("idle", "parado");\n';
-        code += '                   // [Collider Restore]\n';
-        code += '                   const colG = this.entidade.obterComponente("CollisionComponent");\n';
-        code += '                   if (colG && this._defH && colG.altura !== this._defH) { colG.altura = this._defH; colG.offsetY = this._defOffY; }\n';
-        code += '               }\n';
-        code += '           } else {\n';
-        code += '               if (pressDown) {\n';
-        code += '                    playAnim("slide", "crouch_walk");\n';
-        code += '                    \n';
-        code += '                    this.pararSom(this.audioAndarInstancia); this.audioAndarInstancia = null;\n';
-        code += '                    this.pararSom(this.audioCorridaInstancia); this.audioCorridaInstancia = null;\n';
-        code += '               } else {\n';
-        code += '                    if(correndo) playAnim("run", "correr");\n';
-        code += '                    else playAnim("walk", "andar");\n';
-        code += '               }\n';
+        code += '           \n';
+        code += '           // Wall Cling Logic\n';
+        code += '           \n';
+        code += '           if (this.paredeDir) { \n';
+        code += '               spriteComp.inverterX = false; \n';
+        code += '               spriteComp.offsetX = Number(this.defaultOffsetX) + Number(this.offsetWallDir); \n';
         code += '           }\n';
-        code += '       } else {\n';
-        code += '           if (this.entidade.velocidadeY < 0) playAnim("jump", "pulo");\n';
-        code += '           else playAnim("fall", "cair");\n';
+        code += '           if (this.paredeEsq) { \n';
+        code += '               spriteComp.inverterX = true; \n';
+        code += '               let rawVal = Number(this.defaultOffsetX) + Number(this.offsetWallEsq);\n';
+        code += '               if (isNaN(rawVal)) rawVal = 0;\n';
+        code += '               spriteComp.offsetX = Math.max(-100, Math.min(100, rawVal));\n';
+        code += '           }\n';
         code += '       }\n';
-        code += '       if (spriteComp) {\n';
-        code += '           if (vx > 0) spriteComp.inverterX = false;\n';
-        code += '           if (vx < 0) spriteComp.inverterX = true;\n';
+        code += '       \n';
+        code += '       if (input.teclaPrecionadaAgora(" ") || input.teclaPrecionadaAgora("ArrowUp")) {\n';
+        code += '         this.entidade.velocidadeY = -this.forcaPulo;\n';
+        code += '         this.entidade.velocidadeX = this.paredeEsq ? velAtual : -velAtual;\n';
+        code += '         // Exit slide state immediately on jump\n';
+        code += '         if (spriteComp && this.isVisualSliding) {\n';
+        code += '             spriteComp.offsetX = this.defaultOffsetX;\n';
+        code += '             this.isVisualSliding = false;\n';
+        code += '         }\n';
+        code += '         return;\n';
+        code += '       }\n';
+        code += '    } else {\n';
+        code += '       // Reset visual state if we were sliding\n';
+        code += '       if (spriteComp && this.isVisualSliding) {\n';
+        code += '           spriteComp.offsetX = this.defaultOffsetX;\n';
+        code += '           this.isVisualSliding = false;\n';
+        code += '       }\n';
+        code += '       \n';
+        code += '       if (!noChao) {\n';
+        code += '          const isJump = this.entidade.velocidadeY < 0;\n';
+        code += '          if (isJump) playAnim("pulo", "jump");\n';
+        code += '          else playAnim("caindo", "fall");\n';
+        code += '       } else {\n';
+        code += '          // Ground Logic\n';
+        code += '          // [Collider Resize: Ground]\n';
+        code += '          const colG = this.entidade.obterComponente("CollisionComponent");\n';
+        code += '          if (colG && this._defH > 0) {\n';
+        code += '              if (pressDown) {\n';
+        code += '                   if (colG.altura !== this._crouchH) { colG.altura = this._crouchH; colG.offsetY = this._crouchOffY; }\n';
+        code += '              } else {\n';
+        code += '                   if (colG.altura !== this._defH) { colG.altura = this._defH; colG.offsetY = this._defOffY; }\n';
+        code += '              }\n';
+        code += '          }\n';
+        code += '          \n';
+        code += '          if (pressDown) {\n';
+        code += '             if (Math.abs(vx) > 10) {\n';
+        code += '                 if (hasAnim("crouch_walk") || hasAnim("andar_abaixado")) playAnim("crouch_walk", "andar_abaixado");\n';
+        code += '                 else playAnim("andando", "walk");\n';
+        code += '             } else {\n';
+        code += '                 playAnim("abaixar", "crouch");\n';
+        code += '             }\n';
+        code += '          } else if (Math.abs(vx) > 10) {\n';
+        code += '            if (correndo) playAnim("correndo", "run");\n';
+        code += '            else playAnim("andando", "walk");\n';
+        code += '          } else {\n';
+        code += '            playAnim("parado", "idle");\n';
+        code += '            // console.log("[Script] Estado: PARADO. VX:", vx);\n';
+        code += '          }\n';
+        code += '       }\n';
+        code += '       \n';
+        code += '       // Standard Flipping (Does not touch Offset)\n';
+        code += '       if (vx < 0 && spriteComp) spriteComp.inverterX = true;\n';
+        code += '       if (vx > 0 && spriteComp) spriteComp.inverterX = false;\n';
+        code += '       \n';
+        code += '       if ((input.teclaPrecionadaAgora(" ") || input.teclaPrecionadaAgora("ArrowUp")) && noChao) {\n';
+        code += '          this.entidade.velocidadeY = -this.forcaPulo;\n';
         code += '       }\n';
         code += '    }\n';
         code += '  }\n';
-
-        code += '  atualizar(deltaTime) {\n';
-        code += '      this.entidade.x += this.entidade.velocidadeX * deltaTime;\n';
-        code += '      this.entidade.y += this.entidade.velocidadeY * deltaTime;\n';
+        code += '  atualizar(dt) {\n';
+        code += '    // Safety: Validate position before physics\n';
+        code += '    if (isNaN(this.entidade.x) || isNaN(this.entidade.y)) {\n';
+        code += '        console.error("[MovPlat] Position became NaN! Resetting to spawn.");\n';
+        code += '        this.entidade.x = this.entidade.startX || 0;\n';
+        code += '        this.entidade.y = this.entidade.startY || 0;\n';
+        code += '        this.entidade.velocidadeX = 0;\n';
+        code += '        this.entidade.velocidadeY = 0;\n';
+        code += '    }\n';
+        code += '    \n';
+        code += '    this.entidade.velocidadeY += this.entidade.gravidade * dt;\n';
+        code += '    this.entidade.y += this.entidade.velocidadeY * dt;\n';
+        code += '    this.entidade.x += this.entidade.velocidadeX * dt;\n';
+        code += '    this.entidade.noChao = false;\n';
         code += '  }\n';
-
-        // --- Exposição de Métodos no Editor ---
-        code += '  // Methods exposed for audio stop on destroy/disable\n';
-        code += '  onDestroy() {\n';
-        code += '      this.pararSom(this.audioAndarInstancia);\n';
-        code += '      this.pararSom(this.audioWallSlideInstancia);\n';
-        code += '  }\n';
-
         code += '}\n';
-
         return code;
     }
 
@@ -2463,54 +2419,6 @@ class DeathScreenScript {
         this.entidade.velocidadeY = 0;
     }
 
-    /**
-     * ADAPTER: Permite ser chamado pelo StatsRPG.aoMorrer()
-     */
-    /**
-     * ADAPTER: Permite ser chamado pelo StatsRPG.aoMorrer()
-     */
-    aoMorrer() {
-        console.log('💀 [DeathScreen] aoMorrer chamado!');
-        this.onDeath(null, () => {
-            // Callback de respawn
-            const engine = this.entidade.engine || window.editor?.engine;
-            
-            if (engine) {
-                // PRIMEIRO: Verifica se existe um RespawnScript especializado
-                const respawnScript = this.entidade.componentes ? 
-                    Array.from(this.entidade.componentes.values()).find(
-                        c => c.instance && c.instance.constructor.name === 'RespawnScript'
-                    ) : null;
-                    
-                if (respawnScript && respawnScript.instance && typeof respawnScript.instance.renascer === 'function') {
-                    console.log('🔄 [DeathScreen] Delegando respawn para RespawnScript...');
-                    respawnScript.instance.renascer();
-                } else {
-                    // FALLBACK: Reset Manual
-                    console.log('🔄 [DeathScreen] Realizando Respawn Manual (Fallback)...');
-                    this.entidade.x = this.startX || 0;
-                    this.entidade.y = this.startY || 0;
-                    if (this.entidade.hpMax) this.entidade.hp = this.entidade.hpMax;
-                    this.entidade.morto = false;
-                    this.entidade.visivel = true;
-                    this.entidade.temGravidade = true;
-                    this.entidade.velocidadeX = 0;
-                    this.entidade.velocidadeY = 0;
-                }
-                
-                // Reseta dialog
-                if (this.dialog) {
-                    this.dialog.close();
-                    this.dialog.remove();
-                    this.dialog = null;
-                }
-                this.state = 'idle';
-            } else {
-                console.error('❌ [DeathScreen] Engine não encontrada para respawn! Evitando reload.');
-            }
-        });
-    }
-
     _criarDialog() {
         let dialog = document.createElement('dialog');
         dialog.id = 'death-dialog';
@@ -2570,9 +2478,14 @@ class DeathScreenScript {
 
         // Botão Reiniciar Fase (Teleporte para Início)
         let btnRestart = this._criarBotao(this.textoReiniciar || '🏠 Reiniciar Fase', () => {
-            // Usa o callback definido em aoMorrer() para garantir lógica consistente
-            console.log('🔄 [DeathScreen] Botão Reiniciar clicado. Acionando callback...');
-            this._finalizar(true);
+            // Teleporta para o início salvo no construtor
+            if (this.entidade) {
+                this.entidade.x = this.startX;
+                this.entidade.y = this.startY;
+                this.entidade.velocidadeX = 0;
+                this.entidade.velocidadeY = 0;
+            }
+            this._finalizar(false);
         });
 
         btnContainer.appendChild(btnRestart);
@@ -2756,39 +2669,7 @@ class CombateMeleeScript {
         this.foiPressionado = false;
         this.tempoCooldown = 0;
         this.slideDirection = 1;
-        
-        // --- AUDIO ---
-        this.somAtaque = "";
-        this.pitchAtaque = 1.0;
-        this.somSlide = "";
-        this.pitchSlide = 1.0;
-        this.audioSlideInstancia = null;
     }
-    
-    // --- AUDIO HELPER ---
-    tocarSom(id, loop = false, controlsRef = null, pitch = 1.0) {
-        if (!id || !window.AudioManager) return null;
-        if (loop && controlsRef && controlsRef.playing) {
-             if (controlsRef.setRate) controlsRef.setRate(pitch);
-             return controlsRef;
-        }
-        const ctrl = window.AudioManager.play(id, 1.0, loop, pitch);
-        if (loop && ctrl) ctrl.playing = true;
-        return ctrl;
-    }
-  
-    pararSom(controlsRef) {
-        if (controlsRef) {
-            controlsRef.stop();
-            controlsRef.playing = false;
-        }
-    }
-    
-    onDestroy() {
-        this.pararSom(this.audioSlideInstancia);
-    }
-
-
 
     iniciar() {
         const valor = String(this.mostrarDebugHitbox).toLowerCase().trim();
@@ -2843,9 +2724,6 @@ class CombateMeleeScript {
             console.log('   🎬 Tocando animação:', this.animAttack);
             sprite.play(this.animAttack);
         }
-        
-        // SOM: Ataque
-        this.tocarSom(this.somAtaque, false, null, this.pitchAtaque);
     }
 
     iniciarSlideAttack() {
@@ -2872,9 +2750,6 @@ class CombateMeleeScript {
             sprite.play(this.animSlide);
             console.log('   🎬 Slide playing:', this.animSlide);
         }
-        
-        // SOM: Slide
-        this.audioSlideInstancia = this.tocarSom(this.somSlide, true, this.audioSlideInstancia, this.pitchSlide);
     }
 
     estaOcupado() {
@@ -2933,8 +2808,6 @@ class CombateMeleeScript {
         if (this.tempoDecorrido >= this.slideDuration) {
             this.slideAtacando = false;
             this.entidade.velocidadeX = 0;
-            this.pararSom(this.audioSlideInstancia);
-            this.audioSlideInstancia = null;
             console.log('🏃 Slide Completo!');
             return;
         }
@@ -3296,57 +3169,25 @@ class CombateMeleeScript {
             
             case 'queda':
                 this.entidade.y = 3000;
-                if (this.mostrarLog) {
-                    console.log('   Teleportado para Y=3000');
-                }
+                console.log('   Teleportado para Y=3000');
                 break;
             
             case 'ambos':
                 this.entidade.hp = 0;
                 this.entidade.y = 3000;
-                if (this.mostrarLog) {
-                    console.log('   HP zerado + Queda');
-                }
+                console.log('   HP zerado + Queda');
                 break;
-        }
-
-        if (this.mostrarLog) {
-            console.log('💀 [SimuladorMorte] Morte simulada! O script MorteAnimacao deve detectar.');
-            console.log('   Estado atual - Morto:', this.entidade.morto);
-        }
-
-        // DEBUG: Lista todos os componentes para diagnóstico
-        if (this.entidade.componentes) {
-            console.log('🔧 [SimuladorMorte] Diagnosticando componentes...');
-            const values = this.entidade.componentes instanceof Map ? this.entidade.componentes.values() : this.entidade.componentes;
-            
-            for (const comp of values) {
-                 if (comp.tipo === 'ScriptComponent' && comp.instance) {
-                     const name = comp.instance.constructor.name;
-                     console.log(\`   - Found Script: "\${name}"\`);
-                     
-                     if (name === 'StatsRPG' || name.includes('StatsRPG')) {
-                         console.log('🔧 [SimuladorMorte] StatsRPG encontrado! Forçando aoMorrer()...');
-                         if (comp.instance.aoMorrer) {
-                             comp.instance.aoMorrer();
-                         } else {
-                             console.error('❌ [SimuladorMorte] StatsRPG encontrado mas sem método aoMorrer!');
-                         }
-                     }
-                 }
-            }
         }
     }
 
     processarInput(engine) {
-        // Detecta tecla de ativação
         if (engine.teclaPrecionadaAgora(this.teclaAtivacao)) {
             this.simularMorte();
         }
     }
 
     atualizar(deltaTime) {
-        // Nada no atualizar - tudo é feito por input
+        // Nada
     }
 }`;
     }
@@ -3392,7 +3233,7 @@ class CombateMeleeScript {
         this.entidade.gastarMana = this.gastarMana.bind(this);
         this.entidade.restaurarMana = this.restaurarMana.bind(this);
 
-        console.log('⭐ [StatsRPG v2] Constructor - Stats definidos e API exposta');
+        console.log('⭐ [StatsRPG] Constructor - Stats definidos e API exposta');
     }
 
     iniciar() {
@@ -3411,11 +3252,7 @@ class CombateMeleeScript {
         this.entidade.forca = this.forca;
         this.entidade.defesa = this.defesa;
         
-        // Failsafe Audio (v2)
-        if (this.somLevelUp === undefined) this.somLevelUp = '';
-        if (this.pitchLevelUp === undefined) this.pitchLevelUp = 1.0;
-        
-        console.log('⭐ [StatsRPG v2] iniciar() - HP:', this.entidade.hp, '| Level:', this.entidade.level);
+        console.log('⭐ [StatsRPG] iniciar() - HP:', this.entidade.hp, '| Mana:', this.entidade.mana, '| Level:', this.entidade.level);
     }
 
     receberDano(quantidade) {
@@ -3496,41 +3333,6 @@ class CombateMeleeScript {
         // Regeneração Mana
         if (this.regeneracaoMana > 0 && this.entidade.mana < this.entidade.manaMax) {
             this.entidade.mana = Math.min(this.entidade.mana + (this.regeneracaoMana * deltaTime), this.entidade.manaMax);
-        }
-
-        // VERIFICAÇÃO DE MORTE
-        // Garante que aoMorrer() seja chamado se HP <= 0 (mesmo que via SimuladorMorte/KillZone)
-        if (this.entidade.hp <= 0 && !this.entidade.morto) {
-            console.log('🚨 [StatsRPG] Detectado HP <= 0. Iniciando morte...');
-            this.aoMorrer();
-        }
-    }
-
-    aoMorrer() {
-        if (this.entidade.morto) return;
-        
-        console.warn('💀 [StatsRPG] aoMorrer() EXECUTADO!');
-        this.entidade.morto = true;
-        
-        // Desabilita física
-        this.entidade.temGravidade = false;
-        this.entidade.velocidadeX = 0;
-        this.entidade.velocidadeY = 0;
-        
-        // Notifica outros scripts
-        if (this.entidade.componentes) {
-             const comps = this.entidade.componentes instanceof Map ? 
-                           this.entidade.componentes.values() : 
-                           this.entidade.componentes;
-                           
-             for (const comp of comps) {
-                 if (comp.tipo === 'ScriptComponent' && comp.instance && comp.instance !== this) {
-                     if (typeof comp.instance.aoMorrer === 'function') {
-                         console.log(' 👉 Notificando:', comp.instance.constructor.name);
-                         comp.instance.aoMorrer();
-                     }
-                 }
-             }
         }
     }
 

@@ -98,13 +98,30 @@ class Entidade {
     obterScript(nomeScript) {
         for (const comp of this.componentes.values()) {
             if (comp.tipo === 'ScriptComponent' && comp.instance) {
-                // Verifica nome da classe ou nome do script salvo
-                if (comp.instance.constructor.name === nomeScript || comp.scriptName === nomeScript) {
+                if (comp.instance.constructor.name === nomeScript) {
                     return comp.instance;
                 }
             }
         }
         return null;
+    }
+
+    /**
+     * Inicia a entidade e seus componentes (Chamado ao dar Play)
+     */
+    iniciar() {
+        for (const comp of this.componentes.values()) {
+            // Tenta chamar iniciar (Padrão novo) ou inicializar (Legado)
+            if (typeof comp.iniciar === 'function') {
+                comp.iniciar();
+            } else if (typeof comp.inicializar === 'function') {
+                // Nota: inicializar geralmente pede (entidade), mas aqui já deve estar setado.
+                // Mas por segurança passamos 'this' se necessário, mas cuidado com re-init.
+                // Melhor só chamar se for estritamente necessário ou se for o padrão de "Start" do componente.
+                // SoundComponent usa 'iniciar()'. Scripts usam 'inicializar' no load.
+                // Vamos focar no 'iniciar' por enquanto para não quebrar outros.
+            }
+        }
     }
 
     /**

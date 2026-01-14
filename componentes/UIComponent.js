@@ -151,7 +151,8 @@ export default class UIComponent {
                 } else if (el.tipo === 'icones') {
                     this.desenharIcones(ctx, el, x, y, valorAtual, valorMax);
                 } else if (el.tipo === 'imagem') {
-                    this.desenharImagem(ctx, renderizador, el, x, y);
+                    // Imagens não precisam de binding de valores
+                    this.desenharImagem(ctx, renderizador, el, x, y, porcentagem);
                 } else if (el.tipo === 'texto') {
                     this.desenharTexto(ctx, el, x, y, valorAtual, valorMax);
                 } else if (el.tipo === 'inventario') {
@@ -187,16 +188,32 @@ export default class UIComponent {
         // Borda (opcional) // TODO: Adicionar config de borda
     }
 
-    desenharImagem(ctx, renderizador, el, x, y) {
+    desenharImagem(ctx, renderizador, el, x, y, porcentagem) {
         if (!el.assetId) return;
 
         // Tenta obter o asset do gerenciador
         // renderizador -> engine -> assetManager
         const assetManager = (renderizador.engine && renderizador.engine.assetManager) ? renderizador.engine.assetManager : renderizador.assetManager;
         if (assetManager) {
-            const img = assetManager.obterImagem(el.assetId);
-            if (img) {
-                ctx.drawImage(img, x, y, el.largura || img.width, el.altura || img.height);
+            const asset = assetManager.obterAsset(el.assetId);
+            if (asset && asset.imagem) {
+                const img = asset.imagem;
+                const largura = el.largura || img.width;
+                const altura = el.altura || img.height;
+
+                // Se tiver binding de valores (alvo/alvoMax), usa como barra de progresso
+                if (el.alvo && el.alvoMax && porcentagem !== undefined) {
+                    // Desenha apenas a porcentagem da imagem (clip horizontal)
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.rect(x, y, largura * porcentagem, altura);
+                    ctx.clip();
+                    ctx.drawImage(img, x, y, largura, altura);
+                    ctx.restore();
+                } else {
+                    // Desenha a imagem completa
+                    ctx.drawImage(img, x, y, largura, altura);
+                }
             }
         }
     }
@@ -235,13 +252,8 @@ export default class UIComponent {
 
     _getImgHelper(assetManager, id) {
         if (!assetManager || !id) return null;
-        if (typeof assetManager.obterImagem === 'function') {
-            return assetManager.obterImagem(id);
-        } else if (typeof assetManager.obterAsset === 'function') {
-            const asset = assetManager.obterAsset(id);
-            return asset ? asset.imagem : null;
-        }
-        return null;
+        const asset = assetManager.obterAsset(id);
+        return asset ? asset.imagem : null;
     }
 
     desenharInventario(ctx, renderizador, el, x, y) {

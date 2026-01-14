@@ -43,6 +43,15 @@
                 <button class="btn-tool" id="btn-camera-reset" title="Resetar Câmera (Home)">
                     🎯
                 </button>
+                <div class="toolbar-separator" style="width:1px; height:24px; background:#444; margin:0 5px;"></div>
+                <button class="btn-tool" id="btn-audio-manager" data-i18n-title="tooltip.audioManager"
+                    title="Gerenciador de Áudio">
+                    🎵
+                </button>
+                <button class="btn-tool" id="btn-toggle-mute" data-i18n-title="tooltip.toggleMute"
+                    title="Mutar/Desmutar">
+                    🔊
+                </button>
             </div>
 
             <!-- Grupo: Controles de Execução -->
@@ -65,7 +74,7 @@
                         data-i18n="menu.open">Carregar</span></button>
                 <button class="btn-save" id="btn-save" data-i18n-title="tooltip.save"><span
                         data-i18n="menu.save">Salvar</span></button>
-                <input type="file" id="input-load-project" style="display:none" accept=".json">
+                <input type="file" id="input-load-project" style="display:none" accept=".json,.lumina">
                 <button class="btn-export" id="btn-export" data-i18n-title="tooltip.export"><span
                         data-i18n="menu.export">Exportar</span></button>
                 <button class="btn-tool" id="btn-run-web" data-i18n-title="tooltip.playWeb"
@@ -130,7 +139,7 @@
 
                 <!-- Painel de Hierarquia (Topo) -->
                 <div class="painel-hierarquia"
-                    style="flex: 1; display: flex; flex-direction: column; min-height: 200px; border-bottom: 2px solid #555;">
+                    style="flex: 1; display: flex; flex-direction: column; min-height: 200px; border-bottom: 2px solid #555; overflow: hidden;">
                     <div class="painel-header">
                         <h3><span data-i18n="panel.hierarchy">Hierarquia</span></h3>
                     </div>
@@ -619,6 +628,10 @@
             console.log('[i18n] Sistema de tradução inicializado - Idioma:', i18n.getCurrentLanguage());
         }
     </script>
+
+    <!-- Audio System -->
+    <script src="engine/AudioManager.js"></script>
+
 
     <script type="module" src="main.js"></script>
 </body>

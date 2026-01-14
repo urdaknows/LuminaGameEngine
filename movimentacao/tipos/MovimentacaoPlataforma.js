@@ -104,6 +104,12 @@ class MovimentacaoPlataforma extends Movimentacao {
      * Processa input de plataforma
      */
     processarInput(entidade, input) {
+        // Se estiver morto, não processa input
+        if (entidade.morto) {
+            entidade.velocidadeX = 0;
+            return;
+        }
+
         const velocidadeHorizontal = this.obterParametro('velocidadeHorizontal');
         const teclaPulo = this.obterParametro('teclaPulo');
 

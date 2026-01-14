@@ -1,5 +1,7 @@
 /**
  * Script de Stats RPG
+ * VERSION: 2.1.0 - Audio Support Added
+ * LAST_UPDATED: 2026-01-14T18:10:00
  * 
  * Define e gerencia atributos RPG do personagem:
  * - HP (Vida)
@@ -8,6 +10,7 @@
  * - XP (Experiência)
  * - Level (Nível)
  * - Atributos (Força, Defesa, etc)
+ * - Audio (Som de Level Up com Pitch Control)
  * 
  * Adicione este script em personagens que precisam de sistema RPG!
  */
@@ -139,6 +142,18 @@ export default class StatsRPG {
                 valor: 1.5,
                 descricao: 'Multiplicador de XP por level (ex: 1.5 = +50% a cada level)'
             },
+            {
+                nome: 'somLevelUp',
+                tipo: 'audio',
+                valor: '',
+                descricao: 'Som ao subir de level'
+            },
+            {
+                nome: 'pitchLevelUp',
+                tipo: 'number',
+                valor: 1.0,
+                descricao: 'Velocidade/Pitch do som de Level Up'
+            },
 
             {
                 nome: 'SECTION_Atributos',
@@ -207,6 +222,8 @@ export default class StatsRPG {
         this.xpInicial = 0;
         this.xpParaProximoLevel = 100;
         this.multiplicadorXP = 1.5;
+        this.somLevelUp = '';
+        this.pitchLevelUp = 1.0;
 
         this.forca = 10;
         this.defesa = 5;
@@ -217,6 +234,10 @@ export default class StatsRPG {
     }
 
     iniciar() {
+        // FAILSAFE: Garante que propriedades de áudio existam (backward compatibility)
+        if (this.somLevelUp === undefined) this.somLevelUp = '';
+        if (this.pitchLevelUp === undefined) this.pitchLevelUp = 1.0;
+
         // Inicializa stats na entidade
         this.entidade.hp = this.hpInicial || this.hpMax;
         this.entidade.hpMax = this.hpMax;
@@ -375,6 +396,11 @@ export default class StatsRPG {
             console.log(`   Força: +2 → ${this.entidade.forca}`);
             console.log(`   Defesa: +1 → ${this.entidade.defesa}`);
         }
+
+        // Toca som de Level Up
+        if (this.somLevelUp && window.AudioManager) {
+            window.AudioManager.play(this.somLevelUp, 1.0, false, this.pitchLevelUp || 1.0);
+        }
     }
 
     /**
@@ -385,10 +411,32 @@ export default class StatsRPG {
             console.log('💀 [StatsRPG] Personagem morreu (HP = 0)');
         }
 
-        // Outros scripts podem detectar hp <= 0
+        // Marca a entidade como morta
+        this.entidade.morto = true;
+
+        // Desabilita física para evitar movimento
+        this.entidade.temGravidade = false;
+        this.entidade.velocidadeX = 0;
+        this.entidade.velocidadeY = 0;
+
+        // Tenta notificar outros scripts (ex: MorteAnimacao)
+        // Percorre todos os componentes de script
+        for (const comp of this.entidade.componentes.values()) {
+            if (comp.tipo === 'ScriptComponent' && comp.instance) {
+                // Se o script tem método aoMorrer, chama
+                if (typeof comp.instance.aoMorrer === 'function' && comp.instance !== this) {
+                    comp.instance.aoMorrer();
+                }
+            }
+        }
     }
 
     atualizar(deltaTime) {
+        // FAILSAFE PERMANENTE: Garante que propriedades de áudio existam
+        // Isso resolve o problema de saves antigos que não têm essas propriedades
+        if (this.somLevelUp === undefined) this.somLevelUp = '';
+        if (this.pitchLevelUp === undefined) this.pitchLevelUp = 1.0;
+
         // Regeneração de HP
         if (this.regeneracaoHP > 0 && this.entidade.hp < this.entidade.hpMax) {
             this.entidade.hp = Math.min(
@@ -412,6 +460,50 @@ export default class StatsRPG {
                 this.entidade.staminaMax
             );
         }
+
+        // VERIFICAÇÃO DE MORTE: Garante que aoMorrer() seja chamado mesmo se HP for zerado diretamente
+        // (ex: SimuladorMorte, KillZone, etc)
+        if (this.entidade.hp <= 0 && !this.entidade.morto) {
+            this.aoMorrer();
+        }
+    }
+
+    serializar() {
+        // Retorna todas as propriedades configuráveis
+        return {
+            hpMax: this.hpMax,
+            hpInicial: this.hpInicial,
+            regeneracaoHP: this.regeneracaoHP,
+            usarMana: this.usarMana,
+            manaMax: this.manaMax,
+            manaInicial: this.manaInicial,
+            regeneracaoMana: this.regeneracaoMana,
+            usarStamina: this.usarStamina,
+            staminaMax: this.staminaMax,
+            staminaInicial: this.staminaInicial,
+            regeneracaoStamina: this.regeneracaoStamina,
+            usarLevel: this.usarLevel,
+            levelInicial: this.levelInicial,
+            xpInicial: this.xpInicial,
+            xpParaProximoLevel: this.xpParaProximoLevel,
+            multiplicadorXP: this.multiplicadorXP,
+            somLevelUp: this.somLevelUp,
+            pitchLevelUp: this.pitchLevelUp,
+            forca: this.forca,
+            defesa: this.defesa,
+            velocidade: this.velocidade,
+            inteligencia: this.inteligencia,
+            mostrarLogs: this.mostrarLogs
+        };
+    }
+
+    desserializar(dados) {
+        // Carrega dados salvos, mantendo valores padrão para propriedades novas
+        Object.assign(this, dados);
+
+        // Garante que propriedades novas existam (backward compatibility)
+        if (this.somLevelUp === undefined) this.somLevelUp = '';
+        if (this.pitchLevelUp === undefined) this.pitchLevelUp = 1.0;
     }
 
     processarInput(engine) {

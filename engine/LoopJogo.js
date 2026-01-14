@@ -46,7 +46,11 @@ class LoopJogo {
         if (!this.rodando) return;
 
         // Calcula deltaTime em segundos
-        const deltaTime = (tempoAtual - this.tempoAnterior) / 1000;
+        let deltaTime = (tempoAtual - this.tempoAnterior) / 1000;
+
+        // Clamp deltaTime (Max 0.1s = 10 FPS) to prevent physics explosion/tunneling on lag spikes
+        if (deltaTime > 0.1) deltaTime = 0.1;
+
         this.tempoAnterior = tempoAtual;
 
         // FPS Update

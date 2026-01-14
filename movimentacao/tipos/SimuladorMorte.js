@@ -110,6 +110,28 @@ export default class SimuladorMorte {
         if (this.mostrarLog) {
             console.log('💀 [SimuladorMorte] Morte simulada! O script MorteAnimacao deve detectar.');
         }
+
+        // DEBUG: Lista todos os componentes para diagnóstico
+        if (this.entidade.componentes) {
+            console.log('🔧 [SimuladorMorte] Diagnosticando componentes...');
+            const values = this.entidade.componentes instanceof Map ? this.entidade.componentes.values() : this.entidade.componentes;
+
+            for (const comp of values) {
+                if (comp.tipo === 'ScriptComponent' && comp.instance) {
+                    const name = comp.instance.constructor.name;
+                    console.log(`   - Found Script: "${name}"`);
+
+                    if (name === 'StatsRPG' || name.includes('StatsRPG')) {
+                        console.log('🔧 [SimuladorMorte] StatsRPG encontrado! Forçando aoMorrer()...');
+                        if (comp.instance.aoMorrer) {
+                            comp.instance.aoMorrer();
+                        } else {
+                            console.error('❌ [SimuladorMorte] StatsRPG encontrado mas sem método aoMorrer!');
+                        }
+                    }
+                }
+            }
+        }
     }
 
     processarInput(engine) {

@@ -57,8 +57,8 @@ export class AssetManager {
         if (asset) {
             Object.assign(asset, novosDados);
 
-            // Se houve atualização de source, recarregar objeto Image
-            if (novosDados.source) {
+            // Se houve atualização de source, recarregar objeto Image (APENAS SE NÃO FOR AUDIO)
+            if (novosDados.source && asset.tipo !== 'audio') {
                 asset.imagem = new Image();
                 asset.imagem.src = novosDados.source;
                 // Opcional: listener de onload para debug
@@ -66,17 +66,68 @@ export class AssetManager {
                 asset.imagem.onerror = (e) => console.error(`[AssetManager] Erro ao carregar imagem: ${asset.nome}`, e);
             }
 
+            this.syncGlobalAssets();
+
             // Notificar listeners se houver sistema de eventos
             return true;
         }
         return false;
     }
 
+    /**
+     * Sincroniza os assets para o window.GameAssets (usado pelo AudioManager e Engine)
+     */
+    syncGlobalAssets() {
+        if (!window.GameAssets) window.GameAssets = {};
+        if (!window.GameAssetsMeta) window.GameAssetsMeta = {}; // Metadata global
+
+        // Sincroniza Sprites (opcional, mas bom pra consistência)
+        this.assets.sprites.forEach(a => {
+            if (a.source) window.GameAssets[a.id] = a.source;
+        });
+
+        // Sincroniza Sons e Metadata
+        this.assets.sons.forEach(a => {
+            if (a.source) window.GameAssets[a.id] = a.source;
+            // Sync Metadata (Volume Correction)
+            window.GameAssetsMeta[a.id] = {
+                volume: (a.volume !== undefined) ? a.volume : 1.0
+            };
+        });
+
+        // console.log('[AssetManager] Global GameAssets synced.', Object.keys(window.GameAssets).length);
+    }
+
+    criarAudioAsset(nome, folderId = null) {
+        const id = 'asset_audio_' + Date.now();
+        const novoAudio = {
+            id: id,
+            tipo: 'audio', // 'audio'
+            nome: nome || 'Novo Audio',
+            folderId: folderId,
+            source: null,
+            volume: 1.0 // Volume base (fator de correção)
+        };
+        this.assets.sons.push(novoAudio);
+        this.editor.log(`Audio criado: ${novoAudio.nome}`, 'success');
+        return novoAudio;
+    }
+
+
     removerAsset(id) {
-        const index = this.assets.sprites.findIndex(a => a.id === id);
+        let index = this.assets.sprites.findIndex(a => a.id === id);
         if (index > -1) {
             this.assets.sprites.splice(index, 1);
-            this.editor.log('Asset removido.', 'warning');
+            this.editor.log('Asset (Sprite) removido.', 'warning');
+            this.syncGlobalAssets(); // Sync
+            return true;
+        }
+
+        index = this.assets.sons.findIndex(a => a.id === id);
+        if (index > -1) {
+            this.assets.sons.splice(index, 1);
+            this.editor.log('Asset (Audio) removido.', 'warning');
+            this.syncGlobalAssets(); // Sync
             return true;
         }
         return false;
@@ -104,6 +155,8 @@ export class AssetManager {
                     asset.imagem.src = asset.source;
                 }
             });
+
+            this.syncGlobalAssets(); // Sync explícito ao carregar
         }
     }
 
