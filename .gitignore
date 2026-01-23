@@ -42,7 +42,8 @@ npm-debug.log*
 tmp/
 temp/
 *.tmp
-*.bak
+*.bak*
+*_bak*
 *.cache
 
 # ===============================================
@@ -65,8 +66,11 @@ user_projects/
 # BACKUP
 # ===============================================
 backup/
-*.backup
-*.old
+*.backup*
+*backup*
+*_backup*
+*_backup_*
+*.old*
 
 # ===============================================
 # OS SPECIFIC

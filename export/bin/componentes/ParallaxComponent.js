@@ -50,8 +50,8 @@ export default class ParallaxComponent {
         ctx.setTransform(1, 0, 0, 1, 0, 0); // Screen Space
         ctx.imageSmoothingEnabled = false; // Pixel Art Mode (CSS: image-rendering: pixelated)
 
-        const viewW = camera.width || ctx.canvas.width;
-        const viewH = camera.height || ctx.canvas.height;
+        const viewW = ctx.canvas.width;
+        const viewH = ctx.canvas.height;
         const zoom = camera ? (camera.zoom || 1) : 1;
 
         let desenhouAlgo = false;

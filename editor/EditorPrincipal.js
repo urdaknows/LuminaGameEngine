@@ -23,7 +23,7 @@ import UIComponent from '../componentes/UIComponent.js';
 import InventoryComponent from '../componentes/InventoryComponent.js';
 import ItemComponent from '../componentes/ItemComponent.js';
 import SoundComponent from '../componentes/SoundComponent.js';
-import GeradorScript from '../movimentacao/GeradorScript.js';
+import GeradorScript from '../movimentacao/GeradorScript.js?v=2';
 import { EditorSpriteSheet } from './EditorSpriteSheet.js';
 import { EditorAnimation } from './EditorAnimation.js';
 import { AssetManager } from './AssetManager.js';
@@ -493,6 +493,7 @@ class EditorPrincipal {
         document.getElementById('btn-load')?.addEventListener('click', () => document.getElementById('input-load-project')?.click());
         document.getElementById('input-load-project')?.addEventListener('change', (e) => this.carregarProjeto(e));
         document.getElementById('btn-export')?.addEventListener('click', () => this.exportarProjeto());
+        document.getElementById('btn-run-web')?.addEventListener('click', () => this.alternarModo());
 
         // Botão de Configurações da Cena (Cor de Fundo)
         document.getElementById('btn-scene-settings')?.addEventListener('click', () => this.abrirConfiguracoesCena());
@@ -794,7 +795,12 @@ class EditorPrincipal {
 
             // 5. Configurar Cena
             if (this.sceneConfig.backgroundColor) {
-                // Update scene color logic if needed (usually handled in render)
+                this.aplicarSceneConfig();
+            }
+
+            // 6. Configurar Iluminação
+            if (dados.lighting && this.lightingSystem) {
+                this.lightingSystem.desserializar(dados.lighting);
             }
 
             // Atualizar UI
@@ -1318,6 +1324,18 @@ class EditorPrincipal {
 
             this.engine.simulado = true; // Inicia física
 
+            // FORÇAR INVENTÁRIO FECHADO ao iniciar Play Mode
+            const invEntidade = this.entidades.find(e => e.nome === 'Invetory' || e.nome === 'Inventory');
+            if (invEntidade) {
+                invEntidade.visivel = true;  // Entidade SEMPRE visível (é container)
+                const ui = invEntidade.obterComponente('UIComponent');
+                if (ui) {
+                    ui.ativo = false;  // UI desativada = não renderiza
+                    ui.elementos = ui.elementos.filter(el => el.id !== '__inventory_overlay__');  // Remove overlay
+                }
+                console.log('[EditorPrincipal] Inventário iniciado FECHADO no Play Mode');
+            }
+
             // Inicializar entidades (Scripts, Sons, etc)
             this.engine.entidades.forEach(ent => {
                 if (ent.iniciar) ent.iniciar();
@@ -1347,14 +1365,31 @@ class EditorPrincipal {
     /**
      * Pausa o jogo
      */
-    pausar() {
-        this.engine.simulado = !this.engine.simulado;
+    toggleSimulacao() {
+        this.simulando = !this.simulando;
+        this.engine.simulado = this.simulando;
 
-        const btnPause = document.getElementById('btn-pause');
-        if (btnPause) {
-            btnPause.textContent = this.engine.simulado ? '⏸ Pause' : '▶ Resume';
-            // Visualmente indicar estado de pausa
-            btnPause.style.background = this.engine.simulado ? '#ffd93d' : '#fff';
+        const btn = document.getElementById('btn-play');
+        if (this.simulando) {
+            btn.innerHTML = '⏹️ Parar';
+            btn.classList.add('active');
+
+            // --- FIX INPUT FOCUS ---
+            // Força o foco no canvas para garantir que o teclado funcione
+            if (this.canvas) {
+                this.canvas.setAttribute('tabindex', '0'); // Garante que é focável
+                this.canvas.focus();
+                this.canvas.style.outline = 'none'; // Remove borda de foco feia
+                console.log('🎮 Foco forçado no Canvas para Input');
+            }
+
+            // Salva estado para restaurar depois
+            this.salvarEstadoParaSnapshot();
+        } else {
+            btn.innerHTML = '▶ Simular';
+            btn.classList.remove('active');
+
+            this.engine.simulado = false;
         }
 
         this.log(this.engine.simulado ? 'Jogo resumido' : 'Jogo pausado', 'info');
@@ -5135,6 +5170,7 @@ class EditorPrincipal {
                 { id: 'ScriptComponent_Platform', nome: t('comp.platformer'), icon: '🏃', unico: false },
                 { id: 'ScriptComponent_Patrol', nome: t('comp.aiPatrol'), icon: '🤖', unico: false },
                 { id: 'ScriptComponent_StatsRPG', nome: 'Stats RPG', icon: '⭐', unico: false },
+                { id: 'ScriptComponent_VisualCombate', nome: 'Visual de Combate', icon: '💥', unico: false },
                 { id: 'ScriptComponent_Death', nome: t('comp.deathFade'), icon: '🎞️', unico: false },
                 { id: 'ScriptComponent_DeathSimulator', nome: 'Morte (Simulador)', icon: '🔧', unico: false },
                 { id: 'ScriptComponent_Interaction', nome: t('comp.interaction'), icon: '💬', unico: false },
@@ -5336,6 +5372,8 @@ class EditorPrincipal {
                     this.adicionarScript(ent, 'patrulha');
                 } else if (tipo === 'ScriptComponent_StatsRPG') {
                     this.adicionarScript(ent, 'statsRPG');
+                } else if (tipo === 'ScriptComponent_VisualCombate') {
+                    this.adicionarScript(ent, 'visualCombate');
                 } else if (tipo === 'ScriptComponent_Death') {
                     this.adicionarScript(ent, 'morte');
                 } else if (tipo === 'ScriptComponent_DeathAnim') {
@@ -5537,7 +5575,8 @@ class EditorPrincipal {
                 entidades: this.entidades.map(e => e.serializar()),
                 pastas: this.pastas || [],
                 assets: this.assetManager ? this.assetManager.serializar() : null,
-                sceneConfig: this.sceneConfig || { backgroundColor: '#0a0a15' }
+                sceneConfig: this.sceneConfig || { backgroundColor: '#0a0a15' },
+                lighting: this.lightingSystem ? this.lightingSystem.serializar() : null
             };
 
             const jsonString = JSON.stringify(projeto);
@@ -5713,6 +5752,8 @@ class EditorPrincipal {
                                     componente.scriptName === 'SimuladorMorte' ||
                                     componente.scriptName === 'DeathScreenScript' ||
                                     componente.scriptName === 'RespawnScript' ||
+                                    componente.scriptName === 'CombateMeleeScript' ||
+                                    componente.scriptName === 'InventoryController' || // AUTO-PATCH ENABLED FOR INVENTORY
                                     componente.scriptName === 'InimigoPatrulhaScript') {
                                     const source = componente.source || '';
                                     console.log('[Auto-Patch] Script type matched. Checking version...');
@@ -5724,6 +5765,7 @@ class EditorPrincipal {
                                         (componente.scriptName === 'SimuladorMorte' && !source.includes('Diagnosticando')) ||
                                         (componente.scriptName === 'RespawnScript' && !source.includes('Respawn v7')) ||
                                         (componente.scriptName === 'CombateMeleeScript' && !source.includes('receberDano')) || // Fix: Usa sistema de HP
+                                        (componente.scriptName === 'InventoryController' && !source.includes('InventoryController v2.0')) || // FORCE UPDATE v2.0
                                         (componente.scriptName === 'InimigoPatrulhaScript' && !source.includes('IA Patrulha v10')); // v10 = XP Debug & Hook Fix
 
                                     if (componente.scriptName === 'RespawnScript') {
@@ -5749,6 +5791,109 @@ class EditorPrincipal {
                                                 newSource = gerador.gerarScriptRespawnInimigo(); // O nome do método é enganoso, mas gera 'class RespawnScript'
                                             } else if (componente.scriptName === 'InimigoPatrulhaScript') {
                                                 newSource = gerador.gerarIAInimigoPatrulha({ parametros: { velocidade: 100, distancia: 200 } });
+                                            } else if (componente.scriptName === 'InventoryController') {
+                                                // --- AUTO-PATCH HARDCODED V2.4 (WORKING VERSION) ---
+                                                newSource = [
+                                                    "class InventoryController {",
+                                                    "    constructor(entidade) {",
+                                                    "        this.entidade = entidade;",
+                                                    "        this.teclaToggle = 'i';",
+                                                    "        this.aberto = false;",
+                                                    "        this.wasPressed = false;",
+                                                    "        this.corOverlay = 'rgba(0, 0, 0, 0.7)';",
+                                                    "        this.entidade.zIndex = 50000;",
+                                                    "        ",
+                                                    "        // Inicializa Inventory UI se engine já existir",
+                                                    "        if (this.entidade.engine) {",
+                                                    "            const inv = this.entidade.engine.entidades.find(e => e.nome === 'Invetory' || e.nome === 'Inventory');",
+                                                    "            if (inv) {",
+                                                    "                inv.visivel = true;  // Entidade sempre visível",
+                                                    "                inv.zIndex = 100000;",
+                                                    "                const ui = inv.obterComponente('UIComponent');",
+                                                    "                if (ui) {",
+                                                    "                    ui.ativo = false;  // Inicia DESATIVADO",
+                                                    "                    // Remove overlay inicial se houver",
+                                                    "                    ui.elementos = ui.elementos.filter(el => el.id !== '__inventory_overlay__');",
+                                                    "                    console.log('[Inventory] Constructor: UI desativada');",
+                                                    "                }",
+                                                    "            }",
+                                                    "        }",
+                                                    "    }",
+                                                    "    ",
+                                                    "    renderizar(ctx) {",
+                                                    "        if (!this.entidade.engine) return;",
+                                                    "        ",
+                                                    "        // FORÇAR FECHAMENTO no primeiro frame (ignora serialização)",
+                                                    "        if (!this._inicializado) {",
+                                                    "            this._inicializado = true;",
+                                                    "            if (this.aberto) {",
+                                                    "                this.aberto = false;  // Força fechado",
+                                                    "                const inv = this.entidade.engine.entidades.find(e => e.nome === 'Invetory' || e.nome === 'Inventory');",
+                                                    "                if (inv) {",
+                                                    "                    inv.visivel = true;  // Entidade sempre visível",
+                                                    "                    const ui = inv.obterComponente('UIComponent');",
+                                                    "                    if (ui) {",
+                                                    "                        ui.ativo = false;",
+                                                    "                        ui.elementos = ui.elementos.filter(el => el.id !== '__inventory_overlay__');",
+                                                    "                    }",
+                                                    "                }",
+                                                    "                console.log('[Inventory] Forçado para FECHADO no início');",
+                                                    "            }",
+                                                    "        }",
+                                                    "        ",
+                                                    "        const isPressed = this.entidade.engine.teclaPressionada('i') || this.entidade.engine.teclaPressionada('I');",
+                                                    "        if (isPressed && !this.wasPressed) this.toggle();",
+                                                    "        this.wasPressed = isPressed;",
+                                                    "    }",
+                                                    "    ",
+                                                    "    atualizar() {}",
+                                                    "    ",
+                                                    "    toggle() {",
+                                                    "        this.aberto = !this.aberto;",
+                                                    "        console.log('[Inventory] Estado:', this.aberto ? 'ABERTO' : 'FECHADO');",
+                                                    "        ",
+                                                    "        if (this.entidade.engine) this.entidade.engine.simulado = !this.aberto;",
+                                                    "        ",
+                                                    "        const inv = this.entidade.engine.entidades.find(e => e.nome === 'Invetory' || e.nome === 'Inventory');",
+                                                    "        console.log('[Inventory] DEBUG - Entidade encontrada?', inv ? 'SIM: ' + inv.nome : 'NÃO');",
+                                                    "        if (inv) {",
+                                                    "            inv.visivel = true;  // Entidade sempre visível",
+                                                    "            inv.zIndex = 100000;",
+                                                    "            const ui = inv.obterComponente('UIComponent');",
+                                                    "            console.log('[Inventory] DEBUG - UIComponent encontrado?', ui ? 'SIM' : 'NÃO');",
+                                                    "            if (ui) {",
+                                                    "                ui.ativo = this.aberto;",
+                                                    "                ",
+                                                    "                // Adiciona/Remove overlay como primeiro elemento",
+                                                    "                if (this.aberto) {",
+                                                    "                    // Remove overlay existente se houver",
+                                                    "                    ui.elementos = ui.elementos.filter(el => el.id !== '__inventory_overlay__');",
+                                                    "                    // Adiciona overlay no INÍCIO do array (renderiza primeiro = fica por baixo)",
+                                                    "                    ui.elementos.unshift({",
+                                                    "                        id: '__inventory_overlay__',",
+                                                    "                        tipo: 'overlay',",
+                                                    "                        cor: this.corOverlay",
+                                                    "                    });",
+                                                    "                    console.log('[Inventory] DEBUG - Overlay adicionado aos elementos');",
+                                                    "                } else {",
+                                                    "                    // Remove overlay quando fechar",
+                                                    "                    ui.elementos = ui.elementos.filter(el => el.id !== '__inventory_overlay__');",
+                                                    "                    console.log('[Inventory] DEBUG - Overlay removido');",
+                                                    "                }",
+                                                    "                ",
+                                                    "                console.log('[Inventory] DEBUG - ui.ativo setado para:', ui.ativo);",
+                                                    "                console.log('[Inventory] DEBUG - Total elementos UI:', ui.elementos.length);",
+                                                    "            }",
+                                                    "            console.log('[Inventory] Z-Index forçado para:', inv.zIndex);",
+                                                    "        } else {",
+                                                    "            console.error('[Inventory] ERRO - Entidade Inventory/Invetory não encontrada!');",
+                                                    "            console.log('[Inventory] DEBUG - Entidades disponíveis:', this.entidade.engine.entidades.map(e => e.nome));",
+                                                    "        }",
+                                                    "    }",
+                                                    "}"
+                                                ].join('\n');
+                                            } else if (componente.scriptName === 'CombateMeleeScript') {
+                                                newSource = gerador.gerarScriptAtaqueMelee();
                                             } else {
                                                 // Default (MovimentacaoPlataforma)
                                                 const infoSimulado = {
@@ -6069,6 +6214,9 @@ class EditorPrincipal {
         } else if (tipo === 'statsRPG') {
             scriptComp.nome = 'Stats RPG';
             codigo = gerador.gerarScriptStatsRPG();
+        } else if (tipo === 'visualCombate') {
+            scriptComp.nome = 'Visual de Combate';
+            codigo = gerador.gerarScriptVisualCombate();
         } else if (tipo === 'morte') {
             scriptComp.nome = 'Sistema de Morte';
             codigo = gerador.gerarScriptMorte();
@@ -6092,7 +6240,64 @@ class EditorPrincipal {
             codigo = gerador.gerarScriptInteracao();
         } else if (tipo === 'inventoryControl') {
             scriptComp.nome = 'Controlador de Inventário';
-            codigo = gerador.gerarControladorInventario();
+
+            // --- HARDCODED V2.4 (WORKING VERSION) ---
+            codigo = [
+                "class InventoryController {",
+                "    constructor(entidade) {",
+                "        this.entidade = entidade;",
+                "        this.teclaToggle = 'i';",
+                "        this.aberto = false;",
+                "        this.wasPressed = false;",
+                "        this.corOverlay = 'rgba(0, 0, 0, 0.7)';",
+                "        this.entidade.zIndex = 99999;",
+                "        ",
+                "        const inv = this.entidade.engine.entidades.find(e => e.nome === 'Invetory' || e.nome === 'Inventory');",
+                "        if (inv) {",
+                "            inv.visivel = true;",
+                "            inv.zIndex = 100000;",
+                "            const ui = inv.obterComponente('UIComponent');",
+                "            if (ui) ui.ativo = false;",
+                "        }",
+                "    }",
+                "    ",
+                "    renderizar(ctx) {",
+                "        if (!this.entidade.engine) return;",
+                "        ",
+                "        const isPressed = this.entidade.engine.teclaPressionada('i') || this.entidade.engine.teclaPressionada('I');",
+                "        if (isPressed && !this.wasPressed) this.toggle();",
+                "        this.wasPressed = isPressed;",
+                "        ",
+                "        if (this.aberto && ctx) {",
+                "            ctx.save();",
+                "            ctx.setTransform(1, 0, 0, 1, 0, 0);",
+                "            ctx.fillStyle = this.corOverlay;",
+                "            ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);",
+                "            ctx.restore();",
+                "        }",
+                "    }",
+                "    ",
+                "    atualizar() {}",
+                "    ",
+                "    toggle() {",
+                "        this.aberto = !this.aberto;",
+                "        console.log('[Inventory] Estado:', this.aberto ? 'ABERTO' : 'FECHADO');",
+                "        ",
+                "        if (this.entidade.engine) this.entidade.engine.simulado = !this.aberto;",
+                "        ",
+                "        const inv = this.entidade.engine.entidades.find(e => e.nome === 'Invetory' || e.nome === 'Inventory');",
+                "        if (inv) {",
+                "            inv.visivel = true;",
+                "            inv.zIndex = 100000;",
+                "            const ui = inv.obterComponente('UIComponent');",
+                "            if (ui) {",
+                "                ui.ativo = this.aberto;",
+                "            }",
+                "            console.log('[Inventory] Z-Index forçado para:', inv.zIndex);",
+                "        }",
+                "    }",
+                "}"
+            ].join('\n');
         } else if (tipo === 'areaMensagem') {
             scriptComp.nome = 'Área de Mensagem';
             codigo = gerador.gerarScriptAreaMensagem();
@@ -6214,8 +6419,482 @@ class EditorPrincipal {
         document.body.appendChild(modal);
     }
 
-    exportarProjeto() {
-        this.log('Exportar funcionalidade em desenvolvimento...', 'warning');
+    alternarModo() {
+        if (this.modoEdicao) {
+            // Entrar no modo Play
+            this.modoEdicao = false;
+            this.salvarEstadoInicial();
+            this.engine.simulado = true;
+            this.log('Entrando no modo Play... (Pressione ESC para sair)', 'info');
+
+            // Criar Overlay
+            this.criarOverlayPlay();
+
+            // Resetar estado de abertura de inventários para garantir que comece fechado
+            this.engine.entidades.forEach(ent => {
+                const inv = ent.obterComponente('InventoryComponent');
+                if (inv) inv.fechar();
+            });
+
+            // Esconder UI do Editor (Opcional)
+            this.painelHierarquia?.window.classList.add('hidden');
+            this.painelPropriedades?.window.classList.add('hidden');
+        } else {
+            // Sair do modo Play
+            this.modoEdicao = true;
+            this.engine.simulado = false;
+            this.restaurarEstadoInicial();
+            this.removerOverlayPlay();
+
+            // Mostrar UI do Editor
+            this.painelHierarquia?.window.classList.remove('hidden');
+            this.painelPropriedades?.window.classList.remove('hidden');
+
+            this.log('Voltando ao modo Edição.', 'info');
+        }
+    }
+
+    criarOverlayPlay() {
+        // FIX: Remove foco de botões anteriores (evita prompt "Nova Pasta" ao apertar Espaço/Enter)
+        if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+        }
+
+        // Criar um canvas overlay que cobre tudo
+        let overlay = document.getElementById('play-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'play-overlay';
+            overlay.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+                background: #000; z-index: 9000; display: flex;
+            `;
+
+            // Botão "Sair do Play" Flutuante
+            const btnSair = document.createElement('button');
+            btnSair.textContent = '❌ Sair do Play Mode (ESC)';
+            btnSair.style.cssText = `
+                position: absolute; top: 10px; right: 10px; z-index: 9001;
+                padding: 10px 20px; background: #ff4757; color: white;
+                border: none; border-radius: 5px; cursor: pointer; font-weight: bold;
+            `;
+            btnSair.onclick = () => this.alternarModo();
+
+            // Move canvas to overlay
+            // HACK: Em vez de mover o canvas, vamos apenas usar CSS fullscreen no canvas existente
+            // E esconder o resto do editor.
+        }
+
+        // Vamos usar a abordagem de Fullscreen CSS no Container principal
+        document.body.classList.add('play-mode-active');
+
+        // Ajustar Engine para Tela Cheia
+        this.engine.canvas.style.position = 'fixed';
+        this.engine.canvas.style.top = '0';
+        this.engine.canvas.style.left = '0';
+        this.engine.canvas.style.width = '100vw';
+        this.engine.canvas.style.height = '100vh';
+        this.engine.canvas.style.zIndex = '5000';
+
+        // CORREÇÃO: Atualizar resolução do Buffer para não achatar a imagem
+        if (this.engine.renderizador) {
+            this.engine.renderizador.redimensionar(window.innerWidth, window.innerHeight);
+        }
+        this.engine.camera.atualizarTamanho(window.innerWidth, window.innerHeight);
+
+        // Se houver gameScale configurado
+        if (this.config.gameScale) {
+            this.engine.camera.zoom = this.config.gameScale;
+        }
+
+        // Criar botão de Exit se não existir
+        if (!document.getElementById('btn-exit-play')) {
+            const btn = document.createElement('button');
+            btn.id = 'btn-exit-play';
+            btn.textContent = '❌ STOP';
+            btn.style.cssText = `
+                position: fixed; top: 10px; right: 20px; z-index: 5001;
+                background: #ff4757; color: white; border: none; padding: 10px 15px;
+                border-radius: 4px; cursor: pointer; font-family: sans-serif; font-weight: bold;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            `;
+            btn.onclick = () => this.alternarModo();
+            document.body.appendChild(btn);
+        } else {
+            document.getElementById('btn-exit-play').style.display = 'block';
+        }
+    }
+
+    removerOverlayPlay() {
+        document.body.classList.remove('play-mode-active');
+
+        // Restaurar Canvas
+        this.engine.canvas.style.position = '';
+        this.engine.canvas.style.top = '';
+        this.engine.canvas.style.left = '';
+        this.engine.canvas.style.width = '';
+        this.engine.canvas.style.height = '';
+        this.engine.canvas.style.zIndex = '';
+        this.ajustarTamanhoCanvas();
+
+        const btn = document.getElementById('btn-exit-play');
+        if (btn) btn.style.display = 'none';
+
+        // Reset Zoom
+        // this.engine.camera.zoom = 1; // Mantém zoom ou reseta? O editor tem seu próprio zoom.
+    }
+
+    salvarEstadoInicial() {
+        // Serializa tudo para restaurar depois
+        // Isso é pesado, mas garante rollback perfeito
+        this.estadoInicial = {
+            entidades: this.entidades.map(e => e.serializar()),
+            // Não precisa salvar assets, pois eles não mudam (read-only)
+        };
+    }
+
+    restaurarEstadoInicial() {
+        if (!this.estadoInicial) return;
+
+        this.engine.entidades = [];
+        this.entidades = [];
+        this.entidadeSelecionada = null; // Limpar seleção
+
+        if (this.estadoInicial.entidades) {
+            Entidade.contadorId = 0; // Reset IDs? Cuidado se houver referências
+            // Melhor não resetar IDs globais para manter consistência, mas o play mode pode ter bagunçado
+
+            this.aplicarProjeto({ entidades: this.estadoInicial.entidades });
+        }
+
+        this.estadoInicial = null;
+    }
+
+    pausar() {
+        this.engine.simulado = !this.engine.simulado;
+        this.log(this.engine.simulado ? 'Jogo Resumido' : 'Jogo Pausado', 'info');
+    }
+
+    parar() {
+        if (!this.modoEdicao) {
+            console.log('[EditorPrincipal] Parando modo Play. Stack:');
+            console.trace();
+            this.alternarModo();
+        }
+    }
+
+    async exportarProjeto() {
+        if (!confirm('Deseja exportar o projeto completo?\nIsso irá gerar um arquivo .zip com o Player Standalone e todos os scripts da engine.')) return;
+
+        try {
+            this.log('Iniciando exportação completa...', 'info');
+
+            // 1. Prepara o ZIP
+            const zip = new JSZip();
+
+            // 2. Coleta Assets (Base64) e Serializa Projeto
+            this.log('Processando assets...', 'info');
+
+            // Cria objeto de projeto completo
+            const projetoCompleto = {
+                metadata: {
+                    versao: "2.0",
+                    data: new Date().toISOString(),
+                    engine: "Lumina Game Engine"
+                },
+                config: this.config || {},
+                entidades: this.entidades.map(e => e.serializar()),
+                assets: this.assetManager.serializar(),
+                pastas: this.pastas || [],
+                sceneConfig: this.sceneConfig || { backgroundColor: '#0a0a15' },
+                lighting: this.lightingSystem ? this.lightingSystem.serializar() : null
+            };
+
+            // Adiciona project.json na raiz
+            zip.file("project.json", JSON.stringify(projetoCompleto, null, 2));
+
+            // 3. Coleta Scripts da Engine (bin/)
+            this.log('Coletando scripts da engine...', 'info');
+
+            // Lista manual de arquivos da engine para incluir
+            // Mantém a estrutura de pastas original dentro de 'bin'
+            const engineFiles = [
+                'engine/Engine.js',
+                'engine/LoopJogo.js',
+                'engine/Renderizador.js',
+                'engine/Camera.js',
+                'engine/AudioManager.js',
+                'engine/ImageCache.js',
+
+                'entidades/Entidade.js',
+                'entidades/EntidadeFactory.js',
+
+                'editor/AssetManager.js', // Necessário para funcionamento do player (mock)
+                'sistemas/LightingSystem.js', // NOVO: Faltava o sistema de luz
+
+                // Componentes
+                'componentes/SpriteComponent.js',
+                'componentes/CollisionComponent.js',
+                'componentes/ScriptComponent.js',
+                'componentes/TilemapComponent.js',
+                'componentes/CameraFollowComponent.js',
+                'componentes/ParallaxComponent.js',
+                'componentes/UIComponent.js',
+                'componentes/InventoryComponent.js',
+                'componentes/ItemComponent.js',
+                'componentes/DialogueComponent.js',
+                'componentes/CheckpointComponent.js',
+                'componentes/KillZoneComponent.js',
+                'componentes/ParticleEmitterComponent.js',
+                'componentes/LightComponent.js',
+                'componentes/SoundComponent.js',
+
+                // Movimentação & Scripting
+                'movimentacao/InfiniteRunnerController.js',
+                'movimentacao/GeradorScript.js',
+                'movimentacao/ProceduralTerrainGenerator.js',
+                'movimentacao/Movimentacao.js', // NOVO: Classe base necessária
+                'movimentacao/CameraFollowRunner.js', // NOVO
+
+                // Tipos de Movimentação (Para garantir dependências)
+                'movimentacao/tipos/MovimentacaoBasica.js',
+                'movimentacao/tipos/MovimentacaoCorrida.js',
+                'movimentacao/tipos/MovimentacaoDash.js',
+                'movimentacao/tipos/MovimentacaoPlataforma.js',
+                'movimentacao/tipos/MorteAnimacao.js',
+                'movimentacao/tipos/SimuladorMorte.js',
+                'movimentacao/tipos/StatsRPG.js',
+
+                // Estados
+                'estados/Estado.js',
+                'estados/MaquinaEstado.js'
+            ];
+
+            const folderBin = zip.folder("bin");
+
+            // Fetch em paralelo
+            const fetchPromises = engineFiles.map(async (filePath) => {
+                try {
+                    // Tenta buscar o arquivo
+                    const response = await fetch(filePath);
+                    if (!response.ok) {
+                        console.warn(`Arquivo não encontrado para exportação: ${filePath}`);
+                        return;
+                    }
+                    const content = await response.text();
+                    folderBin.file(filePath, content);
+                } catch (e) {
+                    console.warn(`Erro ao buscar arquivo ${filePath}:`, e);
+                }
+            });
+
+            await Promise.all(fetchPromises);
+
+            // 4. Cria player.html (index.html no ZIP)
+            this.log('Gerando player.html...', 'info');
+
+            const playerHtml = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumina Player - ${projetoCompleto.config.nomeProjeto || 'Meu Jogo'}</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; color: #fff; font-family: sans-serif; }
+        canvas { display: block; width: 100vw; height: 100vh; image-rendering: pixelated; }
+        #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0a0a15; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; transition: opacity 0.5s; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #444; border-top: 4px solid #4ecdc4; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div id="loading">
+        <div class="spinner"></div>
+        <p>Carregando Jogo...</p>
+    </div>
+    
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Global Scripts (Non-Module) -->
+    <script src="bin/engine/AudioManager.js"></script>
+
+    <!-- Game Bootstrapper -->
+    <script type="module">
+        import Engine from './bin/engine/Engine.js';
+        import Entidade from './bin/entidades/Entidade.js';
+        import { AssetManager } from './bin/editor/AssetManager.js';
+        
+        // Components Imports
+        import ScriptComponent from './bin/componentes/ScriptComponent.js';
+        import { SpriteComponent } from './bin/componentes/SpriteComponent.js';
+        import CollisionComponent from './bin/componentes/CollisionComponent.js';
+        import TilemapComponent from './bin/componentes/TilemapComponent.js';
+        import CameraFollowComponent from './bin/componentes/CameraFollowComponent.js';
+        import ParallaxComponent from './bin/componentes/ParallaxComponent.js';
+        import DialogueComponent from './bin/componentes/DialogueComponent.js';
+        import KillZoneComponent from './bin/componentes/KillZoneComponent.js';
+        import CheckpointComponent from './bin/componentes/CheckpointComponent.js';
+        import { ParticleEmitterComponent } from './bin/componentes/ParticleEmitterComponent.js';
+        import UIComponent from './bin/componentes/UIComponent.js';
+        import InventoryComponent from './bin/componentes/InventoryComponent.js';
+        import ItemComponent from './bin/componentes/ItemComponent.js';
+        import SoundComponent from './bin/componentes/SoundComponent.js';
+        import LightComponent from './bin/componentes/LightComponent.js';
+        import LightingSystem from './bin/sistemas/LightingSystem.js';
+
+        // Mock Editor Environment for Components that expect 'window.editor'
+        window.editor = {
+            assetManager: new AssetManager(null) // Pass null as editor ref
+        };
+
+        async function initGame() {
+            try {
+                // 1. Setup Engine
+                const canvas = document.getElementById('game-canvas');
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                
+                const engine = new Engine(canvas);
+                window.editor.engine = engine;
+                window.engine = engine;
+                
+                // Link AssetManager to Engine and Renderizador
+                engine.assetManager = window.editor.assetManager;
+                engine.renderizador.assetManager = window.editor.assetManager;
+                
+                // Init Lighting System
+                engine.lightingSystem = new LightingSystem(engine.renderizador);
+
+                // 2. Load Project Data
+                const response = await fetch('project.json');
+                const projectData = await response.json();
+                
+                // 3. Load Assets
+                console.log('Inicializando assets...');
+                window.editor.assetManager.desserializar(projectData.assets);
+
+                // 4. Load Entities and Components
+                console.log('Reconstruindo entidades...');
+                if (projectData.entidades) {
+                    for (const dadosEnt of projectData.entidades) {
+                        try {
+                            const ent = Entidade.desserializar(dadosEnt);
+                            
+                            // Reconstruction of Components
+                            if (dadosEnt.componentes) {
+                                let listaComponentes = Array.isArray(dadosEnt.componentes)
+                                    ? dadosEnt.componentes
+                                    : Object.values(dadosEnt.componentes);
+
+                                // Sort to ensure ScriptComponent is last
+                                listaComponentes.sort((a, b) => {
+                                    if (a.tipo === 'ScriptComponent' && b.tipo !== 'ScriptComponent') return 1;
+                                    if (a.tipo !== 'ScriptComponent' && b.tipo === 'ScriptComponent') return -1;
+                                    return 0;
+                                });
+
+                                for (const dadosComp of listaComponentes) {
+                                    let componente = null;
+                                    const tipo = dadosComp.tipo;
+                                    
+                                    if (tipo === 'SpriteComponent') componente = new SpriteComponent();
+                                    else if (tipo === 'CollisionComponent') componente = new CollisionComponent();
+                                    else if (tipo === 'ScriptComponent') componente = new ScriptComponent();
+                                    else if (tipo === 'TilemapComponent') componente = new TilemapComponent();
+                                    else if (tipo === 'CameraFollowComponent') componente = new CameraFollowComponent();
+                                    else if (tipo === 'ParallaxComponent') componente = new ParallaxComponent();
+                                    else if (tipo === 'DialogueComponent') componente = new DialogueComponent();
+                                    else if (tipo === 'KillZoneComponent') componente = new KillZoneComponent();
+                                    else if (tipo === 'CheckpointComponent') componente = new CheckpointComponent();
+                                    else if (tipo === 'ParticleEmitterComponent') componente = new ParticleEmitterComponent();
+                                    else if (tipo === 'UIComponent') componente = new UIComponent();
+                                    else if (tipo === 'InventoryComponent') componente = new InventoryComponent();
+                                    else if (tipo === 'ItemComponent') componente = new ItemComponent();
+                                    else if (tipo === 'SoundComponent') componente = new SoundComponent();
+                                    else if (tipo === 'LightComponent') componente = new LightComponent();
+
+                                    if (componente) {
+                                        // IMPORTANTE: Passar o ID original (fundamental para ScriptComponent múltiplo)
+                                        ent.adicionarComponente(dadosComp.id || tipo, componente);
+                                        
+                                        if (componente.desserializar) {
+                                            componente.desserializar(dadosComp.config || dadosComp);
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            engine.adicionarEntidade(ent);
+                        } catch (err) {
+                            console.error('Erro ao reconstruir entidade:', dadosEnt.nome, err);
+                        }
+                    }
+                }
+
+                 // Configurações Globais
+                if (projectData.sceneConfig && projectData.sceneConfig.backgroundColor) {
+                    engine.renderizador.definirCorFundo(projectData.sceneConfig.backgroundColor);
+                }
+                
+                if (projectData.config) {
+                    if (projectData.config.gameScale) {
+                        engine.camera.zoom = projectData.config.gameScale;
+                    }
+                }
+                
+                // 6. Global Lighting Config
+                if (projectData.lighting && engine.lightingSystem) {
+                    engine.lightingSystem.desserializar(projectData.lighting);
+                }
+
+                // Remove Loading
+                document.getElementById('loading').style.opacity = '0';
+                setTimeout(() => document.getElementById('loading').remove(), 500);
+
+                // Start
+                await engine.iniciar();
+                console.log('Jogo iniciado com sucesso!');
+
+                // Resize handler
+                window.addEventListener('resize', () => {
+                   canvas.width = window.innerWidth;
+                   canvas.height = window.innerHeight;
+                   engine.camera.atualizarTamanho(window.innerWidth, window.innerHeight);
+                   engine.renderizador.redimensionar(window.innerWidth, window.innerHeight);
+                });
+
+            } catch (e) {
+                console.error('Erro fatal ao iniciar jogo:', e);
+                document.getElementById('loading').innerHTML = '<p style="color:red">Erro ao iniciar jogo.<br>Verifique o console (F12).</p>';
+            }
+        }
+
+        initGame();
+    </script>
+</body>
+</html>`;
+
+            zip.file("index.html", playerHtml);
+
+            // 5. Gera o ZIP
+            this.log('Compactando arquivos...', 'info');
+            const blob = await zip.generateAsync({ type: "blob" });
+
+            // 6. Download
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `LuminaProject_${new Date().toISOString().slice(0, 10)
+                }.zip`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            this.log('Exportação concluída com sucesso!', 'success');
+
+        } catch (error) {
+            console.error(error);
+            this.log('Erro ao exportar: ' + error.message, 'error');
+        }
     }
 
     /**
@@ -6333,6 +7012,7 @@ class EditorPrincipal {
                         else if (dadosComp.tipo === 'InventoryComponent') componente = new InventoryComponent();
                         else if (dadosComp.tipo === 'ItemComponent') componente = new ItemComponent();
                         else if (dadosComp.tipo === 'LightComponent') componente = new LightComponent();
+                        else if (dadosComp.tipo === 'SoundComponent') componente = new SoundComponent();
 
                         // Deserializar dados do componente
                         if (componente) {
@@ -6348,14 +7028,14 @@ class EditorPrincipal {
 
                             // FIX: Usar ID único para scripts
                             if (componente.tipo === 'ScriptComponent') {
-                                const scriptId = `script_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+                                const scriptId = `script_${Date.now()}_${Math.floor(Math.random() * 1000)} `;
                                 novaEntidade.adicionarComponente(scriptId, componente);
                             } else {
                                 novaEntidade.adicionarComponente(componente);
                             }
                         }
                     } catch (err) {
-                        console.warn(`Erro ao colar componente ${dadosComp.tipo}:`, err);
+                        console.warn(`Erro ao colar componente ${dadosComp.tipo}: `, err);
                     }
                 }
             }
@@ -6459,7 +7139,7 @@ class EditorPrincipal {
             const totalSeconds = Math.floor(this.engine.tempoJogo || 0);
             const minutes = Math.floor(totalSeconds / 60);
             const seconds = totalSeconds % 60;
-            const timeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            const timeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')} `;
             this.uiTime.textContent = timeStr;
         }
     }

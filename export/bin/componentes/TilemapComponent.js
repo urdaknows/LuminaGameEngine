@@ -115,15 +115,18 @@ class TilemapComponent {
             const drawY = worldY;
 
             // Culling simples (Otimização)
-            // Usar dimensões sincronizadas da câmera para robustez
-            const vW = (camera.width || ctx.canvas.width) / camera.zoom;
-            const vH = (camera.height || ctx.canvas.height) / camera.zoom;
+            // Aqui PRECISAMOS da câmera para saber se está na tela, mas calculando o inverso
+            // Visibilidade:
+            // Left: camera.x
+            // Right: camera.x + (ctx.canvas.width / camera.zoom)
+            // Top: camera.y
+            // Bottom: camera.y + (ctx.canvas.height / camera.zoom)
 
-            // Margem de segurança (1 tile) para evitar que desapareçam nas bordas
-            const margin = size;
+            const viewW = ctx.canvas.width / camera.zoom;
+            const viewH = ctx.canvas.height / camera.zoom;
 
-            if (worldX + size + margin < camera.x || worldX - margin > camera.x + vW ||
-                worldY + size + margin < camera.y || worldY - margin > camera.y + vH) {
+            if (worldX + size < camera.x || worldX > camera.x + viewW ||
+                worldY + size < camera.y || worldY > camera.y + viewH) {
                 continue;
             }
 
