@@ -1,4 +1,4 @@
-import EditorPrincipal from './editor/EditorPrincipal.js?v=3';
+import EditorPrincipal from './editor/EditorPrincipal.js?v=2001';
 
 /**
  * Main - Inicialização do Editor Visual

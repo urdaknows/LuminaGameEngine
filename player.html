@@ -9,30 +9,275 @@
         body {
             margin: 0;
             padding: 0;
-            background: black;
             overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            background-color: #000;
+            user-select: none;
+            font-family: Arial, sans-serif;
+        }
+
+        #game-canvas {
+            display: block;
+            width: 100vw;
             height: 100vh;
         }
 
-        canvas {
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        #ui-layer {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
         }
 
-        #loading {
-            position: absolute;
+        .btn {
+            background: rgba(0, 0, 0, 0.5);
             color: white;
-            font-family: monospace;
+            border: 1px solid #444;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: rgba(40, 40, 40, 0.8);
+        }
+
+        #loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0a15;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 2000;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #444;
+            border-top: 4px solid #4ecdc4;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
     </style>
 </head>
 
 <body>
-    <div id="loading">Carregando...</div>
+    <div id="loading-screen">
+        <div class="spinner"></div>
+        <h2 id="loading-text">Carregando Jogo...</h2>
+    </div>
+
+    <div id="ui-layer">
+        <button id="btn-fullscreen" class="btn">⛶ Tela Cheia</button>
+    </div>
+
     <canvas id="game-canvas"></canvas>
-    <script type="module" src="js/Runtime.js"></script>
+
+    <!-- Import Engine Modules -->
+    <script type="module">
+        import Engine from './engine/Engine.js';
+        import Entidade from './entidades/Entidade.js';
+        import { SpriteComponent } from './componentes/SpriteComponent.js';
+        import AudioComponent from './componentes/SoundComponent.js';
+        import CollisionComponent from './componentes/CollisionComponent.js';
+        import TilemapComponent from './componentes/TilemapComponent.js';
+        import ScriptComponent from './componentes/ScriptComponent.js';
+        import CameraFollowComponent from './componentes/CameraFollowComponent.js';
+        import ParallaxComponent from './componentes/ParallaxComponent.js';
+        import UIComponent from './componentes/UIComponent.js';
+        import InventoryComponent from './componentes/InventoryComponent.js';
+        import ItemComponent from './componentes/ItemComponent.js';
+        import { ParticleEmitterComponent } from './componentes/ParticleEmitterComponent.js';
+
+        // Setup Asset Manager Mock (Player Version)
+        class PlayerAssetManager {
+            constructor() {
+                this.assets = { sprites: [], sons: [] };
+                this.images = {}; // Cache de imagens carregadas
+            }
+
+            async loadAssets(assetData) {
+                this.assets = assetData;
+                const promises = [];
+
+                // Carregar Sprites
+                for (const sprite of this.assets.sprites) {
+                    if (sprite.source) {
+                        promises.push(new Promise((resolve, reject) => {
+                            const img = new Image();
+                            img.onload = () => {
+                                sprite.imagem = img; // Anexar elemento de imagem
+                                this.images[sprite.id] = img;
+                                resolve();
+                            };
+                            img.onerror = () => {
+                                console.warn(`Falha ao carregar asset: ${sprite.nome}`);
+                                resolve(); // Não travar loading
+                            };
+                            img.src = sprite.source; // DataURL
+                        }));
+                    }
+                }
+
+                // TODO: Carregar Sons se houver
+
+                await Promise.all(promises);
+            }
+
+            obterAsset(id) {
+                return this.assets.sprites.find(a => a.id === id) ||
+                    this.assets.sons.find(a => a.id === id);
+            }
+        }
+
+        async function initGame() {
+            const canvas = document.getElementById('game-canvas');
+
+            // Ajustar Canvas
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            // Inicializar Engine
+            const engine = new Engine(canvas);
+            const assetManager = new PlayerAssetManager();
+            engine.assetManager = assetManager; // Injetar dependência
+
+            // Expor globalmente para scripts
+            window.engine = engine;
+
+            try {
+                // Carregar Projeto
+                const response = await fetch('project.json');
+                if (!response.ok) throw new Error('Arquivo do projeto não encontrado');
+                const projectData = await response.json();
+
+                // 1. Carregar Assets
+                document.getElementById('loading-text').textContent = 'Carregando Assets...';
+                if (projectData.assets) {
+                    await assetManager.loadAssets(projectData.assets);
+                }
+
+                // 2. Configurar Cena
+                if (projectData.sceneConfig) {
+                    // Configurações de cena (cor de fundo, etc)
+                    if (projectData.sceneConfig.backgroundColor) {
+                        // Isso geralmente é tratado no renderizador, mas podemos setar aqui se necessário
+                    }
+                }
+
+                // 3. Recriar Entidades (Lógica similar ao EditorPrincipal.js)
+                // OBS: Copiando lógica de desserialização simplificada
+                if (projectData.entidades) {
+                    Entidade.contadorId = 0;
+
+                    for (const data of projectData.entidades) {
+                        const ent = Entidade.desserializar(data);
+
+                        if (data.componentes) {
+                            let listaComponentes = Array.isArray(data.componentes)
+                                ? data.componentes
+                                : Object.values(data.componentes);
+
+                            // Ordenar Scripts por último
+                            listaComponentes.sort((a, b) => {
+                                if (a.tipo === 'ScriptComponent' && b.tipo !== 'ScriptComponent') return 1;
+                                if (a.tipo !== 'ScriptComponent' && b.tipo === 'ScriptComponent') return -1;
+                                return 0;
+                            });
+
+                            for (const compData of listaComponentes) {
+                                let comp = null;
+                                const type = compData.tipo;
+
+                                // Factory simples
+                                switch (type) {
+                                    case 'SpriteComponent': comp = new SpriteComponent(); break;
+                                    case 'AudioComponent':
+                                    case 'SoundComponent': comp = new AudioComponent(); break;
+                                    case 'CollisionComponent': comp = new CollisionComponent(); break;
+                                    case 'TilemapComponent': comp = new TilemapComponent(); break;
+                                    case 'ScriptComponent': comp = new ScriptComponent(); break;
+                                    case 'CameraFollowComponent': comp = new CameraFollowComponent(); break;
+                                    case 'ParallaxComponent': comp = new ParallaxComponent(); break;
+                                    case 'UIComponent': comp = new UIComponent(); break;
+                                    case 'InventoryComponent': comp = new InventoryComponent(); break;
+                                    case 'ItemComponent': comp = new ItemComponent(); break;
+                                    case 'ParticleEmitterComponent': comp = new ParticleEmitterComponent(); break;
+                                }
+
+                                if (comp) {
+                                    const config = compData.config || compData;
+                                    if (comp.desserializar) comp.desserializar(config);
+                                    else Object.assign(comp, config);
+
+                                    ent.adicionarComponente(comp);
+                                }
+                            }
+                        }
+
+                        engine.adicionarEntidade(ent);
+                    }
+                }
+
+                // Configurar Input
+                // (Engine já configura listeners de teclado no constructor)
+
+                // Iniciar Engine
+                document.getElementById('loading-screen').style.display = 'none';
+
+                // Modo Play
+                engine.simulado = true; // Ativar updates
+
+                // Configurar Escala Global se houver
+                if (projectData.config && projectData.config.gameScale) {
+                    if (engine.camera) engine.camera.zoom = projectData.config.gameScale;
+                }
+
+                engine.iniciar();
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('loading-text').textContent = 'Erro: ' + err.message;
+                document.getElementById('loading-text').style.color = '#ff6b6b';
+            }
+
+            // Fullscreen Handler
+            document.getElementById('btn-fullscreen').addEventListener('click', () => {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                } else {
+                    document.exitFullscreen();
+                }
+            });
+        }
+
+        window.onload = initGame;
+    </script>
 </body>
 
 </html>

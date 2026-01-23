@@ -170,21 +170,10 @@ class Engine {
         }
 
         // Sincroniza Camera
-        if (this.camera) {
-            // Atualiza dimensões da própria câmera para culling interno (estaNoViewport)
-            this.camera.canvasWidth = this.canvas.width;
-            this.camera.canvasHeight = this.canvas.height;
-
-            if (this.renderizador.camera) {
-                this.renderizador.camera.x = this.camera.x;
-                this.renderizador.camera.y = this.camera.y;
-                this.renderizador.camera.zoom = this.camera.zoom;
-                // Injetar dimensões para culling correto em componentes (Tilemap, Parallax)
-                this.renderizador.camera.width = this.canvas.width;
-                this.renderizador.camera.height = this.canvas.height;
-                this.renderizador.camera.canvasWidth = this.canvas.width;
-                this.renderizador.camera.canvasHeight = this.canvas.height;
-            }
+        if (this.camera && this.renderizador.camera) {
+            this.renderizador.camera.x = this.camera.x;
+            this.renderizador.camera.y = this.camera.y;
+            this.renderizador.camera.zoom = this.camera.zoom;
         }
 
         // ==========================================
@@ -213,18 +202,8 @@ class Engine {
             if (!entidade.renderizar) continue;
 
             // Frustum Culling: verifica se está no viewport
-            if (this.camera) {
-                // EXCEÇÃO: Pular culling por entidade para componentes "Globais" ou de Background
-                // que gerenciam seu próprio culling ou desenham em toda a tela.
-                const pularCulling =
-                    entidade.obterComponente('TilemapComponent') ||
-                    entidade.obterComponente('ParallaxComponent') ||
-                    entidade.obterComponente('UIComponent') ||
-                    (entidade.largura === 0 && entidade.altura === 0); // Altamente provável ser um container/controller
-
-                if (!pularCulling && !this.camera.estaNoViewport(entidade)) {
-                    continue;  // Pula apenas sprites/objetos pequenos realmente fora da tela
-                }
+            if (this.camera && !this.camera.estaNoViewport(entidade)) {
+                continue;  // Pula entidades fora da tela
             }
 
             entidade.renderizar(this.renderizador);

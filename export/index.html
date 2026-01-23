@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumina Player - Meu Jogo</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; color: #fff; font-family: sans-serif; }
+        canvas { display: block; width: 100vw; height: 100vh; image-rendering: pixelated; }
+        #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0a0a15; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; transition: opacity 0.5s; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #444; border-top: 4px solid #4ecdc4; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div id="loading">
+        <div class="spinner"></div>
+        <p>Carregando Jogo...</p>
+    </div>
+    
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Global Scripts (Non-Module) -->
+    <script src="bin/engine/AudioManager.js"></script>
+
+    <!-- Game Bootstrapper -->
+    <script type="module">
+        import Engine from './bin/engine/Engine.js';
+        import Entidade from './bin/entidades/Entidade.js';
+        import { AssetManager } from './bin/editor/AssetManager.js';
+        
+        // Components Imports
+        import ScriptComponent from './bin/componentes/ScriptComponent.js';
+        import { SpriteComponent } from './bin/componentes/SpriteComponent.js';
+        import CollisionComponent from './bin/componentes/CollisionComponent.js';
+        import TilemapComponent from './bin/componentes/TilemapComponent.js';
+        import CameraFollowComponent from './bin/componentes/CameraFollowComponent.js';
+        import ParallaxComponent from './bin/componentes/ParallaxComponent.js';
+        import DialogueComponent from './bin/componentes/DialogueComponent.js';
+        import KillZoneComponent from './bin/componentes/KillZoneComponent.js';
+        import CheckpointComponent from './bin/componentes/CheckpointComponent.js';
+        import { ParticleEmitterComponent } from './bin/componentes/ParticleEmitterComponent.js';
+        import UIComponent from './bin/componentes/UIComponent.js';
+        import InventoryComponent from './bin/componentes/InventoryComponent.js';
+        import ItemComponent from './bin/componentes/ItemComponent.js';
+        import SoundComponent from './bin/componentes/SoundComponent.js';
+        import LightComponent from './bin/componentes/LightComponent.js';
+        import LightingSystem from './bin/sistemas/LightingSystem.js';
+
+        // Mock Editor Environment for Components that expect 'window.editor'
+        window.editor = {
+            assetManager: new AssetManager(null) // Pass null as editor ref
+        };
+
+        async function initGame() {
+            try {
+                // 1. Setup Engine
+                const canvas = document.getElementById('game-canvas');
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                
+                const engine = new Engine(canvas);
+                window.editor.engine = engine;
+                window.engine = engine;
+                
+                // Link AssetManager to Engine and Renderizador
+                engine.assetManager = window.editor.assetManager;
+                engine.renderizador.assetManager = window.editor.assetManager;
+                
+                // Init Lighting System
+                engine.lightingSystem = new LightingSystem(engine.renderizador);
+
+                // 2. Load Project Data
+                const response = await fetch('project.json');
+                const projectData = await response.json();
+                
+                // 3. Load Assets
+                console.log('Inicializando assets...');
+                window.editor.assetManager.desserializar(projectData.assets);
+
+                // 4. Load Entities and Components
+                console.log('Reconstruindo entidades...');
+                if (projectData.entidades) {
+                    for (const dadosEnt of projectData.entidades) {
+                        try {
+                            const ent = Entidade.desserializar(dadosEnt);
+                            
+                            // Reconstruction of Components
+                            if (dadosEnt.componentes) {
+                                let listaComponentes = Array.isArray(dadosEnt.componentes)
+                                    ? dadosEnt.componentes
+                                    : Object.values(dadosEnt.componentes);
+
+                                // Sort to ensure ScriptComponent is last
+                                listaComponentes.sort((a, b) => {
+                                    if (a.tipo === 'ScriptComponent' && b.tipo !== 'ScriptComponent') return 1;
+                                    if (a.tipo !== 'ScriptComponent' && b.tipo === 'ScriptComponent') return -1;
+                                    return 0;
+                                });
+
+                                for (const dadosComp of listaComponentes) {
+                                    let componente = null;
+                                    const tipo = dadosComp.tipo;
+                                    
+                                    if (tipo === 'SpriteComponent') componente = new SpriteComponent();
+                                    else if (tipo === 'CollisionComponent') componente = new CollisionComponent();
+                                    else if (tipo === 'ScriptComponent') componente = new ScriptComponent();
+                                    else if (tipo === 'TilemapComponent') componente = new TilemapComponent();
+                                    else if (tipo === 'CameraFollowComponent') componente = new CameraFollowComponent();
+                                    else if (tipo === 'ParallaxComponent') componente = new ParallaxComponent();
+                                    else if (tipo === 'DialogueComponent') componente = new DialogueComponent();
+                                    else if (tipo === 'KillZoneComponent') componente = new KillZoneComponent();
+                                    else if (tipo === 'CheckpointComponent') componente = new CheckpointComponent();
+                                    else if (tipo === 'ParticleEmitterComponent') componente = new ParticleEmitterComponent();
+                                    else if (tipo === 'UIComponent') componente = new UIComponent();
+                                    else if (tipo === 'InventoryComponent') componente = new InventoryComponent();
+                                    else if (tipo === 'ItemComponent') componente = new ItemComponent();
+                                    else if (tipo === 'SoundComponent') componente = new SoundComponent();
+                                    else if (tipo === 'LightComponent') componente = new LightComponent();
+
+                                    if (componente) {
+                                        // IMPORTANTE: Passar o ID original (fundamental para ScriptComponent múltiplo)
+                                        ent.adicionarComponente(dadosComp.id || tipo, componente);
+                                        
+                                        if (componente.desserializar) {
+                                            componente.desserializar(dadosComp.config || dadosComp);
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            engine.adicionarEntidade(ent);
+                        } catch (err) {
+                            console.error('Erro ao reconstruir entidade:', dadosEnt.nome, err);
+                        }
+                    }
+                }
+
+                 // Configurações Globais
+                if (projectData.sceneConfig && projectData.sceneConfig.backgroundColor) {
+                    engine.renderizador.definirCorFundo(projectData.sceneConfig.backgroundColor);
+                }
+                
+                if (projectData.config) {
+                    if (projectData.config.gameScale) {
+                        engine.camera.zoom = projectData.config.gameScale;
+                    }
+                }
+                
+                // 6. Global Lighting Config
+                if (projectData.lighting && engine.lightingSystem) {
+                    engine.lightingSystem.desserializar(projectData.lighting);
+                }
+
+                // Remove Loading
+                document.getElementById('loading').style.opacity = '0';
+                setTimeout(() => document.getElementById('loading').remove(), 500);
+
+                // Start
+                await engine.iniciar();
+                console.log('Jogo iniciado com sucesso!');
+
+                // Resize handler
+                window.addEventListener('resize', () => {
+                   canvas.width = window.innerWidth;
+                   canvas.height = window.innerHeight;
+                   engine.camera.atualizarTamanho(window.innerWidth, window.innerHeight);
+                   engine.renderizador.redimensionar(window.innerWidth, window.innerHeight);
+                });
+
+            } catch (e) {
+                console.error('Erro fatal ao iniciar jogo:', e);
+                document.getElementById('loading').innerHTML = '<p style="color:red">Erro ao iniciar jogo.<br>Verifique o console (F12).</p>';
+            }
+        }
+
+        initGame();
+    </script>
+</body>
+</html>

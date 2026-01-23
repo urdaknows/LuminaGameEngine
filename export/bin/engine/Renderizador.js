@@ -24,8 +24,8 @@ class Renderizador {
     desenharRetangulo(x, y, largura, altura, cor = '#ffffff') {
         this.ctx.fillStyle = cor;
         this.ctx.fillRect(
-            x,
-            y,
+            x - this.camera.x,
+            y - this.camera.y,
             largura,
             altura
         );
@@ -38,8 +38,8 @@ class Renderizador {
         this.ctx.fillStyle = cor;
         this.ctx.beginPath();
         this.ctx.arc(
-            x,
-            y,
+            x - this.camera.x,
+            y - this.camera.y,
             raio,
             0,
             Math.PI * 2
@@ -54,7 +54,7 @@ class Renderizador {
         this.ctx.fillStyle = cor;
         this.ctx.font = `${tamanho}px Arial`;
         this.ctx.textAlign = alinhamento;
-        this.ctx.fillText(texto, x, y);
+        this.ctx.fillText(texto, x - this.camera.x, y - this.camera.y);
     }
 
     /**
@@ -64,8 +64,8 @@ class Renderizador {
         this.ctx.strokeStyle = cor;
         this.ctx.lineWidth = espessura;
         this.ctx.beginPath();
-        this.ctx.moveTo(x1, y1);
-        this.ctx.lineTo(x2, y2);
+        this.ctx.moveTo(x1 - this.camera.x, y1 - this.camera.y);
+        this.ctx.lineTo(x2 - this.camera.x, y2 - this.camera.y);
         this.ctx.stroke();
     }
 
@@ -76,8 +76,8 @@ class Renderizador {
         this.ctx.strokeStyle = cor;
         this.ctx.lineWidth = espessura;
         this.ctx.strokeRect(
-            x,
-            y,
+            x - this.camera.x,
+            y - this.camera.y,
             largura,
             altura
         );
