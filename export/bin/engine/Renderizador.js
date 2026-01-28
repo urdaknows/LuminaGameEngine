@@ -8,6 +8,12 @@ class Renderizador {
         this.ctx = canvas.getContext('2d');
         this.camera = { x: 0, y: 0 };
         this.corFundo = '#1a1a2e';
+
+        // Flag global de suavização (padrão: desligado para pixel art)
+        this.imageSmoothingEnabledDefault = false;
+
+        // Aplicar configuração inicial de suavização
+        this._configurarImageSmoothing();
     }
 
     /**
@@ -113,6 +119,29 @@ class Renderizador {
     redimensionar(largura, altura) {
         this.canvas.width = largura;
         this.canvas.height = altura;
+
+        // Reaplica configuração de suavização após mudar o tamanho
+        this._configurarImageSmoothing();
+    }
+
+    /**
+     * Configura suavização de imagem do contexto 2D
+     */
+    _configurarImageSmoothing() {
+        if (!this.ctx) return;
+        const enabled = !!this.imageSmoothingEnabledDefault;
+        this.ctx.imageSmoothingEnabled = enabled;
+        this.ctx.mozImageSmoothingEnabled = enabled;
+        this.ctx.webkitImageSmoothingEnabled = enabled;
+        this.ctx.msImageSmoothingEnabled = enabled;
+    }
+
+    /**
+     * Define suavização global (true = suavizar, false = pixel art nítida)
+     */
+    setImageSmoothing(enabled) {
+        this.imageSmoothingEnabledDefault = !!enabled;
+        this._configurarImageSmoothing();
     }
 }
 

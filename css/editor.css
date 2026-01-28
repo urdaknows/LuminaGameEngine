@@ -239,6 +239,9 @@ body {
     width: 100%;
     height: 100%;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    /* Forçar estilo mais nítido ao reescalar o canvas */
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
 }
 
 /* Overlay info */

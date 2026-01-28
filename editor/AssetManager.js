@@ -36,7 +36,9 @@ export class AssetManager {
             imagem: null, // HTMLImageElement (Runtime)
             larguraFrame: 32,
             alturaFrame: 32,
-            animacoes: {}
+            animacoes: {},
+            // Permite sobrescrever a suavização global por asset (true/false)
+            imageSmoothing: undefined
         };
         this.assets.sprites.push(novoSprite);
         this.editor.log(`Asset criado: ${novoSprite.nome}`, 'success');

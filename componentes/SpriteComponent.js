@@ -417,6 +417,30 @@ export class SpriteComponent {
 
         const ctx = renderizador.ctx;
 
+        // ==========================
+        // Configuração de Suavização
+        // ==========================
+        // Começa com o padrão global do Renderizador
+        const originalSmoothing = ctx.imageSmoothingEnabled;
+        let targetSmoothing = (typeof renderizador.imageSmoothingEnabledDefault === 'boolean')
+            ? renderizador.imageSmoothingEnabledDefault
+            : false;
+
+        // Override por asset (se existir)
+        if (typeof window !== 'undefined' && window.editor && window.editor.assetManager && this.assetId) {
+            const asset = window.editor.assetManager.obterAsset(this.assetId);
+            if (asset && typeof asset.imageSmoothing === 'boolean') {
+                targetSmoothing = asset.imageSmoothing;
+            }
+        }
+
+        if (ctx.imageSmoothingEnabled !== targetSmoothing) {
+            ctx.imageSmoothingEnabled = targetSmoothing;
+            ctx.mozImageSmoothingEnabled = targetSmoothing;
+            ctx.webkitImageSmoothingEnabled = targetSmoothing;
+            ctx.msImageSmoothingEnabled = targetSmoothing;
+        }
+
         // Calcula frame atual
         let frame = 0;
         const anim = this.animacoes[this.animacaoAtual];
@@ -641,10 +665,23 @@ export class SpriteComponent {
                 );
             }
             ctx.restore();
+            // Restaurar suavização original após desenhar este sprite
+            if (ctx.imageSmoothingEnabled !== originalSmoothing) {
+                ctx.imageSmoothingEnabled = originalSmoothing;
+                ctx.mozImageSmoothingEnabled = originalSmoothing;
+                ctx.webkitImageSmoothingEnabled = originalSmoothing;
+                ctx.msImageSmoothingEnabled = originalSmoothing;
+            }
             return true; // Desenhou com sucesso
         } catch (e) {
             console.error('[SpriteComponent] Erro no drawImage:', e);
             ctx.restore();
+            if (ctx.imageSmoothingEnabled !== originalSmoothing) {
+                ctx.imageSmoothingEnabled = originalSmoothing;
+                ctx.mozImageSmoothingEnabled = originalSmoothing;
+                ctx.webkitImageSmoothingEnabled = originalSmoothing;
+                ctx.msImageSmoothingEnabled = originalSmoothing;
+            }
             return false;
         }
     }

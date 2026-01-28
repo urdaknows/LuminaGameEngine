@@ -19,6 +19,10 @@ export class EditorSpriteSheet {
         this.infoDisplay = document.getElementById('sprite-info-display');
         this.zoom = 1.0;
 
+        // Controle de suavização por asset (override do global)
+        this.imageSmoothing = false;
+        this.checkboxSmoothing = null;
+
         this.configurarEventos();
     }
 
@@ -39,6 +43,15 @@ export class EditorSpriteSheet {
         if (asset.source) this.spriteTemp.setSource(asset.source);
         this.spriteTemp.larguraFrame = asset.larguraFrame || 32;
         this.spriteTemp.alturaFrame = asset.alturaFrame || 32;
+
+        // Suavização: usa valor do asset ou fallback para config global
+        this.imageSmoothing = (asset.imageSmoothing !== undefined)
+            ? !!asset.imageSmoothing
+            : !!(this.editor.config && this.editor.config.imageSmoothing);
+
+        if (this.checkboxSmoothing) {
+            this.checkboxSmoothing.checked = this.imageSmoothing;
+        }
 
         // UI
         this.inputWidth.value = this.spriteTemp.larguraFrame;
@@ -63,6 +76,15 @@ export class EditorSpriteSheet {
 
     configurarEventos() {
         document.getElementById('btn-close-sprite').onclick = () => this.fechar();
+
+        // Checkbox de suavização
+        this.checkboxSmoothing = document.getElementById('sprite-image-smoothing');
+        if (this.checkboxSmoothing) {
+            this.checkboxSmoothing.onchange = () => {
+                this.imageSmoothing = this.checkboxSmoothing.checked;
+                this.desenharEditor();
+            };
+        }
 
         // Upload
         const uploadArea = document.getElementById('upload-area');
@@ -172,7 +194,11 @@ export class EditorSpriteSheet {
         if (!img || !img.src || !img.complete) return;
 
         ctx.save();
-        ctx.imageSmoothingEnabled = false;
+        const enabled = !!this.imageSmoothing;
+        ctx.imageSmoothingEnabled = enabled;
+        ctx.mozImageSmoothingEnabled = enabled;
+        ctx.webkitImageSmoothingEnabled = enabled;
+        ctx.msImageSmoothingEnabled = enabled;
         ctx.scale(this.zoom, this.zoom);
         ctx.drawImage(img, 0, 0);
 
@@ -197,6 +223,7 @@ export class EditorSpriteSheet {
                 asset.source = this.spriteTemp.source;
                 asset.larguraFrame = this.spriteTemp.larguraFrame;
                 asset.alturaFrame = this.spriteTemp.alturaFrame;
+                asset.imageSmoothing = this.imageSmoothing;
 
                 // FIX: Refresh Runtime Image explicitly
                 if (asset.source) {

@@ -111,6 +111,10 @@ class EditorPrincipal {
         // CRITICAL FIX: Ensure Renderizador has access to Engine (for UIComponent accessing assetManager)
         if (this.engine.renderizador) {
             this.engine.renderizador.engine = this.engine;
+            // Aplicar configuração inicial de suavização global
+            if (typeof this.engine.renderizador.setImageSmoothing === 'function') {
+                this.engine.renderizador.setImageSmoothing(this.config?.imageSmoothing ?? false);
+            }
         }
 
         // Expor componentes globalmente para uso em scripts e editor
@@ -135,9 +139,9 @@ class EditorPrincipal {
             gridSize: 50,
             snapToGrid: true,
             showGrid: true,
-            showGrid: true,
             showGizmos: false, // Gizmos disabled by default
-            gameScale: 1.0 // Escala Global (Zoom no Play Mode)
+            gameScale: 1.0, // Escala Global (Zoom no Play Mode)
+            imageSmoothing: false // Suavização global (false = pixel art nítida)
         };
 
         this.pastas = []; // Lista de pastas { id, nome, aberta }
@@ -586,6 +590,9 @@ class EditorPrincipal {
                 // Load Gizmos config
                 const gizmoCheck = document.getElementById('conf-show-gizmos');
                 if (gizmoCheck) gizmoCheck.checked = this.config.showGizmos;
+
+                const smoothCheck = document.getElementById('conf-image-smoothing');
+                if (smoothCheck) smoothCheck.checked = !!this.config.imageSmoothing;
             });
 
             const fecharModal = () => modalSettings.classList.add('hidden');
@@ -596,6 +603,15 @@ class EditorPrincipal {
                 this.config.snapToGrid = document.getElementById('conf-snap').checked;
                 this.config.showGrid = document.getElementById('conf-show-grid').checked;
                 this.config.showGizmos = document.getElementById('conf-show-gizmos').checked;
+
+                const smoothCheck = document.getElementById('conf-image-smoothing');
+                this.config.imageSmoothing = smoothCheck ? smoothCheck.checked : this.config.imageSmoothing;
+
+                // Aplicar no renderizador global
+                if (this.engine.renderizador && typeof this.engine.renderizador.setImageSmoothing === 'function') {
+                    this.engine.renderizador.setImageSmoothing(this.config.imageSmoothing);
+                }
+
                 fecharModal();
                 this.log('Configurações aplicadas!', 'success');
             });

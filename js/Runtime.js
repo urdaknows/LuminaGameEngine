@@ -133,15 +133,20 @@ class Runtime {
     }
 
     async loadProjectData(projeto) {
+        // Configuração global de suavização (se existir no projeto)
+        if (projeto.config && this.engine.renderizador && typeof this.engine.renderizador.setImageSmoothing === 'function') {
+            this.engine.renderizador.setImageSmoothing(!!projeto.config.imageSmoothing);
+        }
+
         // 1. Setup AssetManager Mock and Inject into Renderer
         if (!this.engine.assetManager) {
             this.engine.assetManager = {
                 assets: {},
                 obterAsset: function (id) { return this.assets[id]; },
-                adicionarSprite: function (id, nome, src, frames, animacoes) {
+                adicionarSprite: function (id, nome, src, frames, animacoes, imageSmoothing) {
                     const img = new Image();
                     img.src = src;
-                    this.assets[id] = { type: 'sprite', id, nome, source: src, frames, animacoes, imagem: img };
+                    this.assets[id] = { type: 'sprite', id, nome, source: src, frames, animacoes, imagem: img, imageSmoothing };
                 },
                 adicionarSom: function (id, nome, src) {
                     this.assets[id] = { type: 'sound', id, nome, source: src }; // TODO: Audio object if needed
@@ -186,7 +191,7 @@ class Runtime {
                     console.warn("Asset sprite sem source (usando placeholder):", a.nome, a.id);
                     src = placeholderSrc;
                 }
-                this.engine.assetManager.adicionarSprite(a.id, a.nome, src, a.frames, a.animacoes);
+                this.engine.assetManager.adicionarSprite(a.id, a.nome, src, a.frames, a.animacoes, a.imageSmoothing);
             });
 
             if (projeto.assets.sounds) {
